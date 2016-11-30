@@ -24,38 +24,38 @@ class FCN16VGG:
         # Load VGG16 pretrained weight
         data_dict = dt.load_vgg16_weight(data_dir)
         self.data_dict = data_dict
-        
+
         # Init other necessary parameters
     def _build_model(self, feed_dict, image, is_train=True, random_init_fc8=False):
         model = {}
-        
+
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1")
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2")
-        model['pool1'] = nn.max_pool_layer(model['conv1_2'], feed_dict, "pool1")
+        model['pool1'] = nn.max_pool_layer(model['conv1_2'], "pool1")
 
         model['conv2_1'] = nn.conv_layer(model['pool1'], feed_dict, "conv2_1")
         model['conv2_2'] = nn.conv_layer(model['conv2_1'], feed_dict, "conv2_2")
-        model['pool2'] = nn.max_pool_layer(model['conv2_2'], feed_dict, "pool2")
-        
+        model['pool2'] = nn.max_pool_layer(model['conv2_2'], "pool2")
+
         model['conv3_1'] = nn.conv_layer(model['pool2'], feed_dict, "conv3_1")
         model['conv3_2'] = nn.conv_layer(model['conv3_1'], feed_dict, "conv3_2")
         model['conv3_3'] = nn.conv_layer(model['conv3_2'], feed_dict, "conv3_3")
-        model['pool3'] = nn.max_pool_layer(model['conv3_3'], feed_dict, "pool3")
+        model['pool3'] = nn.max_pool_layer(model['conv3_3'], "pool3")
 
         model['conv4_1'] = nn.conv_layer(model['pool3'], feed_dict, "conv4_1")
         model['conv4_2'] = nn.conv_layer(model['conv4_1'], feed_dict, "conv4_2")
         model['conv4_3'] = nn.conv_layer(model['conv4_2'], feed_dict, "conv4_3")
-        model['pool4'] = nn.max_pool_layer(model['conv4_3'], feed_dict, "pool4")
+        model['pool4'] = nn.max_pool_layer(model['conv4_3'], "pool4")
 
 
         model['conv5_1'] = nn.conv_layer(model['pool4'], feed_dict, "conv5_1")
         model['conv5_2'] = nn.conv_layer(model['conv5_1'], feed_dict, "conv5_2")
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3")
-        model['pool5'] = nn.max_pool_layer(model['conv5_3'], feed_dict, "pool5")
+        model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
         model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", dropout=is_train, keep_prob=0.5])
         model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", dropout=is_train, keep_prob=0.5])
-            
+
         # Unclear
         if random_init_fc8:
             model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes)
