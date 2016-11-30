@@ -53,43 +53,61 @@ class FCN16VGG:
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3")
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
-        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", dropout=is_train, keep_prob=0.5])
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", dropout=is_train, keep_prob=0.5])
+        
+        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5])
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5])
 
-        # Unclear
-        if random_init_fc8:
-            model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes)
-        else:
-            model['score_fr'] = nn.fully_conv_layer(model['fconv7'], "score_fr",
-                                                    num_classes=num_classes,
-                                                    relu=False)
+        num_classes = 1000
+        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", [1, 1, 4096, num_classes], random=random_init_fc8, feed_dict=feed_dict)
         return model
 
     def inference(self, image, num_classes):
-        # Image preprocess
-        # Network structure -- VGG16
-        # Upsampling
-        # Return predict
+        # Not finished QJ
+        
+        # Image preprocess: RGB -> BGR 
+        red, green, blue = tf.split(3, 3, image)
+        image = tf.concat(3, [blue, green, red])
 
-        model = self._build_model(self.data_dict, image, is_train=False)
+        # Network structure -- VGG16  
+        # Pretrained weight on imageNet
+        feed_dict = self.data_dict
+        
+        # Basic model
+        model = self._build_model( image, is_train=False)
 
-        pred = tf.argmax(model['score_fr'], dimension=3)
-        upscore2 = nn.upscore_layer(model['score_fr'],
+        # FCN-32s
+        upscore32 = nn.upscore_layer(model['score_fr'],
                                     shape=tf.shape(model['pool4']),
                                     num_classes=num_classes,
-                                    name="upscore2",
+                                    name="upscore32",
                                     ksize=4, stride=2)
-
-        score_pool4 = nn.score_layer(model['pool4', "score_pool4",
-                                     num_classes=num_classes)
-        fuse_pool4 = tf.add(upscore2, score_pool4)
-        upscore32 = nn.upscore_layer(fuse_pool4,
+        
+        # FCN-16s                
+        shape_p4 = model['pool4'].get_shape().as_list()
+        shape_p4.append(num_classes)
+        score_pool4 = nn.score_layer(model['pool4'], "score_pool4", shape_p4, random=random_init_fc8, feed_dict=feed_dict)
+        fuse_pool4 = tf.add(upscore32, score_pool4)
+        upscore16 = nn.upscore_layer(fuse_pool4,
                                      shape=tf.shape(image),
                                      num_classes=num_classes,
-                                     name="upscore32",
+                                     name="upscore16",
                                      ksize=32, stride=16)
 
-        pred_up = tf.argmax(upscore32, dimension=3)
+        ''' FCN-8s         
+        shape_p3 = model['pool3'].get_shape().as_list()
+        shape_p3.append(num_classes)
+        score_pool3 = nn.score_layer(model['pool3'], "score_pool3", shape_p3, random=random_init_fc8, feed_dict=feed_dict)
+        fuse_pool3 = tf.add(upscore16, score_pool3)
+        upscore8 = nn.upscore_layer(fuse_pool4,
+                                     shape=tf.shape(image),
+                                     num_classes=num_classes,
+                                     name="upscore16",
+                                     ksize=32, stride=16)
+        '''
+        # Prediction
+        pred_32s = tf.argmax(model['score_fr'], dimension=3)        
+        pred_16s = tf.argmax(upscore32, dimension=3)
+        
         pass
 
     def train(self, total_loss, learning_rate ):
