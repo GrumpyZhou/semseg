@@ -39,12 +39,12 @@ with tf.Session() as sess:
     sess.run(tf.initialize_all_variables())
 
     print('Running the Network')
-    pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
-
+    # pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
+    pred32 = sess.run(preds, feed_dict=feed_dict)
     pred32_color = dt.color_image(pred32[0])
-    pred16_color = dt.color_image(pred16[0])
-    pred8_color = dt.color_image(pred8[0])
+    # pred16_color = dt.color_image(pred16[0])
+    # pred8_color = dt.color_image(pred8[0])
 
     scp.misc.imsave('./data/fcn32.png', pred32_color)
-    scp.misc.imsave('./data/fcn16.png', pred16_color)
-    scp.misc.imsave('./data/fcn8.png', pred8_color)
+    # scp.misc.imsave('./data/fcn16.png', pred16_color)
+    # scp.misc.imsave('./data/fcn8.png', pred8_color)
