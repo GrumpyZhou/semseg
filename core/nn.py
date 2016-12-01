@@ -70,27 +70,28 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
 def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None):
     # Use random kernel for convolution to calculate the score
     #num_class = shape[3]
-    if random:  # if use random kernel to calculate score
-        in_features = x.get_shape()[3].value
-        print("in_feature, %d" % in_features)
-        shape = [1, 1, in_features, num_classes]
-        print("num_classes, %d" % num_classes)
-        with tf.variable_scope(name) as scope:
-            init_w = tf.truncated_normal_initializer(stddev=stddev)
-            #print()
-            weight = tf.get_variable(name='weight', shape=shape, initializer=init_w)
-            conv = tf.nn.conv2d(x, weight, [1, 1, 1, 1], padding='SAME')
+    with tf.variable_scope(name) as scope:
+        if random:  # if use random kernel to calculate score
+            in_features = x.get_shape()[3].value
+            print("in_feature, %d" % in_features)
+            shape = [1, 1, in_features, num_classes]
+            print("num_classes, %d" % num_classes)
+            with tf.variable_scope(name) as scope:
+                init_w = tf.truncated_normal_initializer(stddev=stddev)
+                #print()
+                weight = tf.get_variable(name='weight', shape=shape, initializer=init_w)
+                conv = tf.nn.conv2d(x, weight, [1, 1, 1, 1], padding='SAME')
 
-            init_b = tf.constant_initializer(0.0)
-            bias = tf.get_variable(name="bias", initializer=init_b, shape=[num_classes])
-            score = tf.nn.bias_add(conv, bias)
+                init_b = tf.constant_initializer(0.0)
+                bias = tf.get_variable(name="bias", initializer=init_b, shape=[num_classes])
+                score = tf.nn.bias_add(conv, bias)
 
-            print("score layer, weights: %s" % weight.get_shape())
-            print("score layer, bias: %s" % bias.get_shape())
-    else:   # Don't use random kernel
-        name = 'fc8'
-        shape = [1,1,4096,1000]     # Assume 1000 way (classes)
-        score = fully_conv_layer(x, feed_dict, name, shape, relu=False)
+                print("score layer, weights: %s" % weight.get_shape())
+                print("score layer, bias: %s" % bias.get_shape())
+        else:   # Don't use random kernel, use VGG16 fc_weights
+            name = 'fc8'
+            shape = [1,1,4096,1000]     # Assume 1000 way (classes)
+            score = fully_conv_layer(x, feed_dict, name, shape, relu=False)
 
     return score
 

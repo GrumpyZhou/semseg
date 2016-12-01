@@ -79,35 +79,36 @@ class FCN16VGG:
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
                                      "upscore32",
-                                     tf.shape(image),   # original size of input image
+                                     tf.shape(image),   # reshape to original input image size
                                      num_classes,
                                      ksize=64, stride=32)
 
         # FCN-16s
-        # upscore2_fr = nn.upscore_layer(model['score_fr'],       # output from last layer
-        #                                "upscore2_fr",
-        #                                tf.shape(image),   # original size of input image
-        #                                num_classes,
-        #                                ksize=4, stride=2)
+        upscore2_fr = nn.upscore_layer(model['score_fr'],       # output from last layer
+                                       "upscore2_fr",
+                                       tf.shape(model['pool4']),   # reshape to output of pool4
+                                       num_classes,
+                                       ksize=4, stride=2)
 
         # Fuse fc8 *2, pool4
         # shape_p4 = model['pool4'].get_shape().as_list()
         # print(shape_p4)
         #print('')
         # shape_p4.append(num_classes)
-        # score_pool4 = nn.score_layer(model['pool4'],
-        #                              "score_pool4",
-        #                              num_classes,
-        #                              random=True,
-        #                              feed_dict=self.data_dict)
-        # fuse_pool4 = tf.add(upscore2_fr, score_pool4)
+        score_pool4 = nn.score_layer(model['pool4'],
+                                     "score_pool4",
+                                     num_classes,
+                                     random=True,
+                                     stddev=0.001,
+                                     feed_dict=self.data_dict)
+        fuse_pool4 = tf.add(upscore2_fr, score_pool4)
 
         # Upsample fusion *16
-        # upscore16 = nn.upscore_layer(fuse_pool4,
-        #                              "upscore16",
-        #                              tf.shape(image),
-        #                              num_classes,
-        #                              ksize=32, stride=16)
+        upscore16 = nn.upscore_layer(fuse_pool4,
+                                     "upscore16",
+                                     tf.shape(image),
+                                     num_classes,
+                                     ksize=32, stride=16)
 
         # FCN-8s
         # Upsample fc8 *4
@@ -145,12 +146,12 @@ class FCN16VGG:
 
         # Prediction
         pred32s = tf.argmax(upscore32, dimension=3)
-        # pred16s = tf.argmax(upscore16, dimension=3)
+        pred16s = tf.argmax(upscore16, dimension=3)
         # pred8s = tf.argmax(upscore8, dimension=3)
 
 
         # return pred32s, pred16s, pred8s
-        return pred32s
+        return pred32s, pred16s
 
     def train(self, total_loss, learning_rate ):
         # To be implemented Later
