@@ -31,8 +31,8 @@ with tf.Session() as sess:
     batch_images = tf.expand_dims(images, 0)
 
     vgg_fcn = FCN16VGG('data')
-    [pred32, pred16] = vgg_fcn.inference(batch_images, num_classes=20)
-    preds = [pred32, pred16]
+    [pred32, pred16, pred8] = vgg_fcn.inference(batch_images, num_classes=20)
+    preds = [pred32, pred16, pred8]
 
     print('Finished building Network.')
 
@@ -41,11 +41,11 @@ with tf.Session() as sess:
 
     print('Running the Network')
     # pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
-    pred32, pred16 = sess.run(preds, feed_dict=feed_dict)
+    pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
     pred32_color = dt.color_image(pred32[0])
     pred16_color = dt.color_image(pred16[0])
-    # pred8_color = dt.color_image(pred8[0])
+    pred8_color = dt.color_image(pred8[0])
 
     scp.misc.imsave('./data/fcn32.png', pred32_color)
     scp.misc.imsave('./data/fcn16.png', pred16_color)
-    # scp.misc.imsave('./data/fcn8.png', pred8_color)
+    scp.misc.imsave('./data/fcn8.png', pred8_color)
