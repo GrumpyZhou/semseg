@@ -26,8 +26,10 @@ class FCN16VGG:
         self.data_dict = data_dict
 
         # Init other necessary parameters
-    def _build_model(self, feed_dict, image, is_train=True, random_init_fc8=False):
+    def _build_model(self, image, num_classes, is_train=True, random_init_fc8=False):
         model = {}
+        feed_dict = self.data_dict
+        #print(feed_dict['conv1_1'][0])
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1")
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2")
@@ -54,14 +56,13 @@ class FCN16VGG:
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
 
-        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5])
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5])
+        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5)
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5)
 
-        num_classes = 1000
-        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", [1, 1, 4096, num_classes], random=random_init_fc8, feed_dict=feed_dict)
+        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict)
         return model
 
-    def inference(self, image, num_classes):
+    def inference(self, image, num_classes, random_init_fc8=False):
         # Not finished QJ
 
         # Image preprocess: RGB -> BGR
@@ -70,62 +71,76 @@ class FCN16VGG:
 
         # Network structure -- VGG16
         # Pretrained weight on imageNet
-        feed_dict = self.data_dict
+        #feed_dict = self.data_dict
 
         # Basic model
-        model = self._build_model(image, is_train=False)
+        model = self._build_model(image, num_classes, is_train=False)
 
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
-                                     name="upscore32",
-                                     shape=tf.shape(image),   # original size of input image
+                                     "upscore32",
+                                     tf.shape(image),   # original size of input image
+                                     num_classes,
                                      ksize=64, stride=32)
 
         # FCN-16s        
         upscore2_fr = nn.upscore_layer(model['score_fr'],       # output from last layer
-                                    name="upscore2_fr",
-                                    shape=tf.shape(image),   # original size of input image
-                                    ksize=4, stride=2)
+                                       "upscore2_fr",
+                                       tf.shape(image),   # original size of input image
+                                       num_classes,
+                                       ksize=4, stride=2)
         
         # Fuse fc8 *2, pool4
         shape_p4 = model['pool4'].get_shape().as_list()
+        print(shape_p4)
+        #print('')
         shape_p4.append(num_classes)
         score_pool4 = nn.score_layer(model['pool4'], 
                                      "score_pool4", 
-                                     shape_p4, 
-                                     random=random_init_fc8, 
-                                     feed_dict=feed_dict)
-        fuse_pool4 = tf.add(upscore2, score_pool4)
+                                     num_classes, 
+                                     random=True, 
+                                     feed_dict=self.data_dict)
+        fuse_pool4 = tf.add(upscore2_fr, score_pool4)
 
         # Upsample fusion *16
         upscore16 = nn.upscore_layer(fuse_pool4,
-                            name="upscore16",
-                            shape=tf.shape(image),
-                            ksize=32, stride=16)
+                                     "upscore16",
+                                     tf.shape(image),
+                                     num_classes,
+                                     ksize=32, stride=16)
 
         # FCN-8s
         # Upsample fc8 *4
+        #upscore_layer(x,  name, shape, num_class, ksize=4, stride=2)
         upscore4_fr = nn.upscore_layer(model['score_fr'],    # output from last layer
-                                    name="upscore4_fr",
-                                    shape=tf.shape(image),   # original size of input image
-                                    ksize=8, stride=4)
+                                       "upscore4_fr",
+                                       tf.shape(image),   # original size of input image
+                                       num_classes,
+                                       ksize=8, stride=4)
         # Upsample pool4 *2
         upscore2_p4 = nn.upscore_layer(score_pool4,
-                                       name="upscore2_p4",
-                                       shape=tf.shape(image),
+                                       "upscore2_p4",
+                                       tf.shape(image),
+                                       num_classes,
                                        ksize=4, stride=2)
         
         # Fuse fc8 *4, pool4 *2, pool3
-        shape_p3 = model['pool3'].get_shape().as_list()
-        shape_p3.append(num_classes)
-        score_pool3 = nn.score_layer(model['pool3'], "score_pool3", shape_p3, random=random_init_fc8, feed_dict=feed_dict)
-        fuse_pool3 = tf.add(tf.add(upscore4, upscore2_p4), score_pool3)
+        #shape_p3 = model['pool3'].get_shape().as_list()
+        #shape_p3.append(num_classes)
+        score_pool3 = nn.score_layer(model['pool3'], 
+                                     "score_pool3", 
+                                     num_classes, 
+                                     random=True, 
+                                     feed_dict=self.data_dict)
+        
+        fuse_pool3 = tf.add(tf.add(upscore4_fr, upscore2_p4), score_pool3)
 
         # Upsample fusion *8
         upscore8 = nn.upscore_layer(fuse_pool3,
-                            name="upscore8",
-                            shape=tf.shape(image),
-                            ksize=16, stride=8)
+                                    "upscore8",
+                                    tf.shape(image),
+                                    num_classes,
+                                    ksize=16, stride=8)
  
        
         # Prediction

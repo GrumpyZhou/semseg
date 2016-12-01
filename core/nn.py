@@ -31,27 +31,31 @@ test()
 
 def max_pool_layer(x, name, stride=2):
     pool = tf.nn.max_pool(x, ksize=[1, stride, stride, 1],
+                          strides=[1, stride, stride, 1],
                           padding='SAME', name=name)
     return pool
 
 def conv_layer(x, feed_dict, name, stride=1):
+    
     with tf.variable_scope(name) as scope:
+        
         kernel = get_conv_kernel(feed_dict, name)
         conv = tf.nn.conv2d(x, kernel,
                             strides=[1, stride, stride, 1],
                             padding='SAME')
-        bias = get_bias(name)
+        bias = get_bias(feed_dict, name)
         conv_out = tf.nn.relu(tf.nn.bias_add(conv, bias), name=scope.name)
         return conv_out
 
 
 def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_prob=0.5):
+    print('!!!!!', name)
     with tf.variable_scope(name) as scope:
-        kernel = get_conv_kernel(name, shape)
+        kernel = get_fconv_weight(feed_dict, name, shape)
         conv = tf.nn.conv2d(x, kernel,
-                            strides = [1, stride, stride, 1],
+                            strides = [1, 1, 1, 1],
                             padding = 'SAME')
-        bias = get_bias(name)
+        bias = get_bias(feed_dict, name)
         conv_out = tf.nn.bias_add(conv, bias)
 
         if relu:
@@ -61,24 +65,30 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
         return conv_out
 
 
-def score_layer(x, name, shape, random=True, stddev=0.001, feed_dict=None):
+def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None):
     # Use random kernel for convolution to calculate the score
-    num_class = shape.get_shape()[3].value
+    #num_class = shape[3]
+    in_features = x.get_shape()[3].value
+    shape = [1, 1, in_features, num_classes]
+
     if random:
         with tf.variable_scope(name) as scope:
             init_w = tf.truncated_normal_initializer(stddev=stddev)
+            #print()
             weight = tf.get_variable(name='weight', shape=shape, initializer=init_w)
             conv = tf.nn.conv2d(x, weight, [1, 1, 1, 1], padding='SAME')
 
             init_b = tf.constant_initializer(0.0)
-            bias = tf.get_variable(name="bias", initializer=init_b, shape=[num_class])
+            bias = tf.get_variable(name="bias", initializer=init_b, shape=[num_classes])
             score = tf.nn.bias_add(conv, bias)
     else:
+        name = 'fc8'
         score = fully_conv_layer(x, feed_dict, name, shape, relu=False)
-    return conv
+    return score
 
 # def upscore_layer(x, feed_dict, name, ksize=4, stride=2):
 # Redefine, previous definition was inconsistent.
+'''
 def upscore_layer(x, name, shape, ksize=4, stride=2):
     # WY
     # feed_dict here is unnecessary, since upsampling params are fixed to biliner interpolation.
@@ -90,9 +100,10 @@ def upscore_layer(x, name, shape, ksize=4, stride=2):
     # Create upsampled prediction
     upscore = tf.image.resize_bilinear(x, size)
     return upscore
+'''
 
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
-def _upscore_layer(x, shape, num_class, name, ksize=4, stride=2):
+def upscore_layer(x, name, shape, num_class, ksize=4, stride=2):
     strides = [1, stride, stride, 1]
     in_features = x.get_shape()[3].value
 
@@ -121,6 +132,7 @@ def _upscore_layer(x, shape, num_class, name, ksize=4, stride=2):
     return deconv
 
 def get_conv_kernel(feed_dict, name):
+    print(name)
     kernel = feed_dict[name][0]
     shape = kernel.shape
     print('Layer name: %s' % name)
@@ -156,7 +168,7 @@ def get_fconv_weight(feed_dict, name, shape, num_class=None):
     var = tf.get_variable(name="weight", initializer=init, shape=shape)
     return var
 
-def get_deconv_filter(shape):
+def get_deconv_filter(f_shape):
     # WY
     # Bilinear interpolation
     '''

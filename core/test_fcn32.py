@@ -16,7 +16,7 @@ import scipy.misc
 import numpy as np
 import tensorflow as tf
 
-import network.fcn_vgg16
+from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # from tensorflow.python.framework import ops
@@ -30,8 +30,7 @@ with tf.Session() as sess:
     feed_dict = {images: test_img1}
     batch_images = tf.expand_dims(images, 0)
 
-    vgg_fcn = fcn_vgg16.FCN16VGG()
-    preds = [pred_32s, pred_16s, pred_8s]
+    vgg_fcn = FCN16VGG('data')
     preds = vgg_fcn.inference(batch_images, num_classes=20)
 
     print('Finished building Network.')
