@@ -73,68 +73,68 @@ class FCN16VGG:
         feed_dict = self.data_dict
 
         # Basic model
-        model = self._build_model( image, is_train=False)
+        model = self._build_model(image, is_train=False)
 
         # FCN-32s
-        # Inconsistent with definition
-        # upscore32 = nn.upscore_layer(model['score_fr'],
-        #                             shape=tf.shape(model['pool4']),
-        #                             num_classes=num_classes,
-        #                             name="upscore32",
-        #                             ksize=4, stride=2)
-        # Use this one:
-        upscore32 = nn.upscore_layer(model['score_fr'],       # output from last layer
-                                    name="upscore32",
-                                    shape=tf.shape(image),    # original size of input image
-                                    # num_classes=num_classes, already encoded in output from last layer
+        upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
+                                     name="upscore32",
+                                     shape=tf.shape(image),   # original size of input image
+                                     ksize=64, stride=32)
+
+        # FCN-16s        
+        upscore2_fr = nn.upscore_layer(model['score_fr'],       # output from last layer
+                                    name="upscore2_fr",
+                                    shape=tf.shape(image),   # original size of input image
                                     ksize=4, stride=2)
-        # Another version of upsampling. Prefer to use upscore_layer() first
-        # upscore32 = _upscore_layer(model['score_fr'],
-        #                            shape=tf.shape(image),
-        #                            num_class=num_classes,
-        #                            name="upscore32",
-        #                            ksize=4, stride=2)
-
-
-        # FCN-16s
+        
+        # Fuse fc8 *2, pool4
         shape_p4 = model['pool4'].get_shape().as_list()
         shape_p4.append(num_classes)
-        score_pool4 = nn.score_layer(model['pool4'], "score_pool4", shape_p4, random=random_init_fc8, feed_dict=feed_dict)
-        fuse_pool4 = tf.add(upscore32, score_pool4)
+        score_pool4 = nn.score_layer(model['pool4'], 
+                                     "score_pool4", 
+                                     shape_p4, 
+                                     random=random_init_fc8, 
+                                     feed_dict=feed_dict)
+        fuse_pool4 = tf.add(upscore2, score_pool4)
 
-        # Inconsistent with definition
-        # upscore16 = nn.upscore_layer(fuse_pool4,
-        #                              shape=tf.shape(image),
-        #                              num_classes=num_classes,
-        #                              name="upscore16",
-        #                              ksize=32, stride=16)
-        # Use this one:
+        # Upsample fusion *16
         upscore16 = nn.upscore_layer(fuse_pool4,
                             name="upscore16",
                             shape=tf.shape(image),
                             ksize=32, stride=16)
-        # upscore16 = _upscore_layer(fuse_pool4,
-        #                            shape=tf.shape(image),
-        #                            num_class=num_classes,
-        #                            name="upscore16",
-        #                            ksize=32, stride=16)
 
-        ''' FCN-8s
+        # FCN-8s
+        # Upsample fc8 *4
+        upscore4_fr = nn.upscore_layer(model['score_fr'],    # output from last layer
+                                    name="upscore4_fr",
+                                    shape=tf.shape(image),   # original size of input image
+                                    ksize=8, stride=4)
+        # Upsample pool4 *2
+        upscore2_p4 = nn.upscore_layer(score_pool4,
+                                       name="upscore2_p4",
+                                       shape=tf.shape(image),
+                                       ksize=4, stride=2)
+        
+        # Fuse fc8 *4, pool4 *2, pool3
         shape_p3 = model['pool3'].get_shape().as_list()
         shape_p3.append(num_classes)
         score_pool3 = nn.score_layer(model['pool3'], "score_pool3", shape_p3, random=random_init_fc8, feed_dict=feed_dict)
-        fuse_pool3 = tf.add(upscore16, score_pool3)
-        upscore8 = nn.upscore_layer(fuse_pool4,
-                                     shape=tf.shape(image),
-                                     num_classes=num_classes,
-                                     name="upscore16",
-                                     ksize=32, stride=16)
-        '''
-        # Prediction
-        pred_32s = tf.argmax(model['score_fr'], dimension=3)
-        pred_16s = tf.argmax(upscore32, dimension=3)
+        fuse_pool3 = tf.add(tf.add(upscore4, upscore2_p4), score_pool3)
 
-        pass
+        # Upsample fusion *8
+        upscore8 = nn.upscore_layer(fuse_pool3,
+                            name="upscore8",
+                            shape=tf.shape(image),
+                            ksize=16, stride=8)
+ 
+       
+        # Prediction
+        pred32s = tf.argmax(upscore32, dimension=3)
+        pred16s = tf.argmax(upscore16, dimension=3)
+        pred8s = tf.argmax(upscore8, dimension=3)
+        
+
+        return pred32s, pred16s, pred8s
 
     def train(self, total_loss, learning_rate ):
         # To be implemented Later
