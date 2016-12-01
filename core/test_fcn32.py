@@ -23,7 +23,8 @@ import data_utils as dt
 
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-test_img1 = skimage.io.imread("./data/tabby_cat.png")
+test_img2 = skimage.io.imread("./data/test_img/tabby_cat.png")
+test_img1 = skimage.io.imread("./data/test_img/01_thumb.jpg")
 
 with tf.Session() as sess:
     images = tf.placeholder("float")
@@ -46,6 +47,6 @@ with tf.Session() as sess:
     pred16_color = dt.color_image(pred16[0])
     pred8_color = dt.color_image(pred8[0])
 
-    scp.misc.imsave('./data/fcn32.png', pred32_color)
-    scp.misc.imsave('./data/fcn16.png', pred16_color)
-    scp.misc.imsave('./data/fcn8.png', pred8_color)
+    scp.misc.imsave('./data/test_img/fcn32.png', pred32_color)
+    scp.misc.imsave('./data/test_img/fcn16.png', pred16_color)
+    scp.misc.imsave('./data/test_img/fcn8.png', pred8_color)
