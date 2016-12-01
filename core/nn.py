@@ -49,7 +49,6 @@ def conv_layer(x, feed_dict, name, stride=1):
 
 
 def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_prob=0.5):
-    #print('!!!!!', name)
     with tf.variable_scope(name) as scope:
         kernel = get_fconv_weight(feed_dict, name, shape)
         conv = tf.nn.conv2d(x, kernel,
@@ -69,7 +68,6 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
 
 def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None):
     # Use random kernel for convolution to calculate the score
-    #num_class = shape[3]
     with tf.variable_scope(name) as scope:
         if random:  # if use random kernel to calculate score
             in_features = x.get_shape()[3].value
@@ -78,7 +76,6 @@ def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None)
             print("num_classes, %d" % num_classes)
             with tf.variable_scope(name) as scope:
                 init_w = tf.truncated_normal_initializer(stddev=stddev)
-                #print()
                 weight = tf.get_variable(name='weight', shape=shape, initializer=init_w)
                 conv = tf.nn.conv2d(x, weight, [1, 1, 1, 1], padding='SAME')
 
@@ -95,8 +92,6 @@ def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None)
 
     return score
 
-# def upscore_layer(x, feed_dict, name, ksize=4, stride=2):
-# Redefine, previous definition was inconsistent.
 '''
 def upscore_layer(x, name, shape, ksize=4, stride=2):
     # WY
@@ -135,7 +130,6 @@ def upscore_layer(x, name, shape, num_class, ksize=4, stride=2):
         stddev = (2 / num_input)**0.5
 
         weights = get_deconv_filter(f_shape)
-        #print("deconv result weights: %s" % weights.get_shape())
         deconv = tf.nn.conv2d_transpose(x, weights, output_shape,
                                         strides=strides, padding='SAME')
 
@@ -182,7 +176,7 @@ def get_fconv_weight(feed_dict, name, shape, num_class=None):
     weights = weights.reshape(shape)
     init = tf.constant_initializer(value=weights,
                                     dtype=tf.float32)
-    var = tf.get_variable(name="weights", initializer=init, shape=shape)
+    var = tf.get_variable(name="weight", initializer=init, shape=shape)
     return var
 
 def get_deconv_filter(f_shape):
