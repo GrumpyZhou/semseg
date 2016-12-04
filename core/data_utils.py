@@ -25,7 +25,6 @@ class VOCDataSet():
 
         self.indices = self.load_indices(params['dataset'])
         self.idx = 0
-        print(type(self.indices))
         # make eval deterministic
         if 'train' not in params['dataset']:
             self.random = False
@@ -81,7 +80,7 @@ class VOCDataSet():
         image = np.array(img, dtype=np.float32)
         image = image[:,:,::-1]     # RGB -> BGR
         image -= self.mean
-        image = image.transpose((2,0,1))
+        #image = image.transpose((2,0,1)) 
         return image
 
     def load_label(self,idx):
@@ -115,7 +114,6 @@ def load_vgg16_weight(path):
 
     data_dict = np.load(fpath, encoding='latin1').item()
     print("Successfullt load vgg16 weight from %s."%fpath)
-    print("Data dict keys:\n",data_dict.keys())
     return data_dict
 
 def color_image(image, num_classes=20):
