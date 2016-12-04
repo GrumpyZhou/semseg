@@ -26,7 +26,7 @@ class FCN16VGG:
         self.data_dict = data_dict
 
         # Init other necessary parameters
-    def _build_model(self, image, num_classes, is_train=True, random_init_fc8=False):
+    def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False):
         model = {}
         feed_dict = self.data_dict
         #print(feed_dict['conv1_1'][0])
@@ -153,10 +153,34 @@ class FCN16VGG:
 
         return pred32s, pred16s, pred8s
 
-    def train(self, total_loss, learning_rate ):
+    # def train(self, total_loss, learning_rate ):
+    def train(self, params, batch, label):
         # To be implemented Later
         # Mini-batch
         # Minimize loss
         # Add necessary params to summary
         # Return train_op
-        pass
+
+        # Build the base model
+        # batch_ = tf.reshape(batch, [1, tf.shape(batch)[2], tf.shape(batch)[3], 3])
+        # print('shape of input: ', tf.shape(batch)[0], tf.shape(batch)[1], tf.shape(batch)[2], tf.shape(batch)[3])
+        model = self._build_model(batch, params['num_classes'], is_train=True, random_init_fc8=True)
+
+        # FCN-32s
+        upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
+                                     "upscore32",
+                                     tf.shape(batch),   # reshape to original input image size
+                                     params['num_classes'],
+                                     ksize=64, stride=32)
+        old_shape = tf.shape(upscore32)
+        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
+        prediction = tf.reshape(upscore32, new_shape)
+
+        truth = tf.reshape(label, [new_shape[0]])
+        # truth has uint8 type, has to be casted to tf.int32 to cal loss
+        truth_ = tf.cast(truth, tf.int32)
+
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth_))
+        train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
+
+        return train_step, loss

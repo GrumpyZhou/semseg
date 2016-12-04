@@ -8,9 +8,9 @@ import sys
 import random
 import numpy as np
 
-    
+
 class VOCDataSet():
-    
+
     def __init__(self, params):
         # Root directory of VOC dataset
         self.voc_dir = params['voc_dir']
@@ -22,9 +22,9 @@ class VOCDataSet():
                         'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
                         'diningtable', 'dog', 'horse', 'motorbike', 'person',
                         'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
-        
+
         self.indices = self.load_indices(params['dataset'])
-        self.idx = 0        
+        self.idx = 0
         print(type(self.indices))
         # make eval deterministic
         if 'train' not in params['dataset']:
@@ -36,13 +36,13 @@ class VOCDataSet():
             self.idx = random.randint(0, len(self.indices)-1)
 
     def next_batch(self):
-        """ 
-        Processing data:
-        - Random index selection(if set)        
-        - Reshape image and label, extend 1st axis for batch dimension
-        - Return: (image, label) 
         """
-        
+        Processing data:
+        - Random index selection(if set)
+        - Reshape image and label, extend 1st axis for batch dimension
+        - Return: (image, label)
+        """
+
         # pick next input
         if self.random:
             self.idx = random.randint(0, len(self.indices)-1)
@@ -54,10 +54,10 @@ class VOCDataSet():
 
         image = self.load_image(self.indices[self.idx])
         label = self.load_label(self.indices[self.idx])
-        
+
         image = image.reshape(1, *image.shape)
         label = label.reshape(1, *label.shape)
-        
+
         return (image,label)
 
 
@@ -68,7 +68,7 @@ class VOCDataSet():
             indices = f.read().splitlines()
         print('Indices loaded: %d' %len(indices))
         return indices
-    
+
     def load_image(self, idx):
         """
         Load input image and preprocess for using pretrained weight from Caffee:
@@ -77,7 +77,7 @@ class VOCDataSet():
         - subtract mean
         - transpose to channel x height x width order
         """
-        img = Image.open('{}/JPEGImages/{}.jpg'.format(self.voc_dir, idx))      
+        img = Image.open('{}/JPEGImages/{}.jpg'.format(self.voc_dir, idx))
         image = np.array(img, dtype=np.float32)
         image = image[:,:,::-1]     # RGB -> BGR
         image -= self.mean
@@ -95,18 +95,17 @@ class VOCDataSet():
         return label
 
 #Testing example
-params = {'voc_dir':"/Users/jennyzhou/GitLocalRepository"
-                    "/APC_InstanceSegmentation/core/data/VOC2012",
-          'dataset':'val',
-          'randomize': True,
-          'seed': None}
+# params = {'voc_dir':"data/VOCdevkit/VOC2012",
+#           'dataset':'val',
+#           'randomize': True,
+#           'seed': None}
 
-dt = VOCDataSet(params)
-data = dt.next_batch()
-print(data[0].shape, data[1].shape)
+# dt = VOCDataSet(params)
+# data = dt.next_batch()
+# print(data[0].shape, data[1].shape)
 
-        
-            
+
+
 
 def load_vgg16_weight(path):
 

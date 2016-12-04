@@ -62,7 +62,7 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
         if relu:
             conv_out =  tf.nn.relu(conv_out)
         if dropout:
-            conv_out = tf.nn.drop(conv_out, keep_prob)
+            conv_out = tf.nn.dropout(conv_out, keep_prob)
         return conv_out
 
 
