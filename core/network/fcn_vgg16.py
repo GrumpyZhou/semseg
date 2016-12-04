@@ -20,7 +20,6 @@ DATA_DIR = 'data'
 class FCN16VGG:
 
     def __init__(self, data_dir=None):
-        """Dict keys:['conv5_1', 'fc6', 'conv5_3', 'fc7', 'fc8', 'conv5_2', 'conv4_1', 'conv4_2', 'conv4_3', 'conv3_3','conv3_2', 'conv3_1', 'conv1_1', 'conv1_2', 'conv2_2', 'conv2_1']"""
         # Load VGG16 pretrained weight
         data_dict = dt.load_vgg16_weight(data_dir)
         self.data_dict = data_dict
@@ -29,7 +28,6 @@ class FCN16VGG:
     def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False):
         model = {}
         feed_dict = self.data_dict
-        #print(feed_dict['conv1_1'][0])
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1")
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2")
@@ -63,15 +61,12 @@ class FCN16VGG:
         return model
 
     def inference(self, image, num_classes, random_init_fc8=False):
-        # Not finished QJ
-
         # Image preprocess: RGB -> BGR
         red, green, blue = tf.split(3, 3, image)
         image = tf.concat(3, [blue, green, red])
 
         # Network structure -- VGG16
         # Pretrained weight on imageNet
-        #feed_dict = self.data_dict
 
         # Basic model
         model = self._build_model(image, num_classes, is_train=False, random_init_fc8=False)
@@ -91,10 +86,6 @@ class FCN16VGG:
                                        ksize=4, stride=2)
 
         # Fuse fc8 *2, pool4
-        # shape_p4 = model['pool4'].get_shape().as_list()
-        # print(shape_p4)
-        #print('')
-        # shape_p4.append(num_classes)
         score_pool4 = nn.score_layer(model['pool4'],
                                      "score_pool4",
                                      num_classes,
@@ -112,7 +103,6 @@ class FCN16VGG:
 
         # FCN-8s
         # Upsample fc8 *4
-        #upscore_layer(x,  name, shape, num_class, ksize=4, stride=2)
         upscore4_fr = nn.upscore_layer(fuse_pool4,    # output from last layer
                                        "upscore4_fr",
                                        tf.shape(model['pool3']),   # reshape to output of pool3
@@ -126,8 +116,6 @@ class FCN16VGG:
         #                                ksize=4, stride=2)
 
         # Fuse fc8 *4, pool4 *2, pool3
-        #shape_p3 = model['pool3'].get_shape().as_list()
-        #shape_p3.append(num_classes)
         score_pool3 = nn.score_layer(model['pool3'],
                                      "score_pool3",
                                      num_classes,
