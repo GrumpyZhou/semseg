@@ -56,8 +56,8 @@ with tf.Session() as sess:
 			next_pair = train_dataset.next_batch()
 			#next_pair_ = tf.reshape(next_pair[0], [1, tf.shape(next_pair[0])[2], tf.shape(next_pair[0])[3], 3])
 			#next_pair__ = next_pair_.eval()		# Convert to python numpy array
-                        print('image shape:', next_pair[[0].shape)
-                        print('label shape:', next_pair[[1].shape)
+                        print('image shape:', next_pair[0].shape)
+                        print('label shape:', next_pair[1].shape)
                                 
 			feed_dict = {batch: next_pair[[0], label: next_pair[1]}
 			_ = sess.run(train_op, feed_dict=feed_dict)
