@@ -171,7 +171,7 @@ class FCN16VGG:
         # find all indices where the pixel label is 255,
         # this must be excluded from calculating cross-entropy
         # truth_1 = tf.contrib.util.make_tensor_proto(truth_)
-        truth_array = tf.contrib.util.make_ndarray(truth_1)
+        truth_array = tf.contrib.util.make_ndarray(truth_)
         ii = tf.where(truth_array == 255)   # find all indices where element value is 255
         truth_array_ =  np.delete(truth_array, ii)  # delete all elements equal to 255
         # # the same preprocessing for predictions
