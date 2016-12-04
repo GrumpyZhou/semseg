@@ -24,11 +24,11 @@ import data_utils as dt
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
-train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
+train_data_config = {'voc_dir':"data/VOC2012",
           'dataset':'train',
           'randomize': True,
           'seed': None}
-params = {'num_classes': 21, 'rate': 1e-4}
+params = {'num_classes': 256, 'rate': 1e-4}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 # data_batch = train_dataset.next_batch()
@@ -59,7 +59,7 @@ with tf.Session() as sess:
                         print('image shape:', next_pair[0].shape)
                         print('label shape:', next_pair[1].shape)
                                 
-			feed_dict = {batch: next_pair[[0], label: next_pair[1]}
+			feed_dict = {batch: next_pair[0], label: next_pair[1]}
 			_ = sess.run(train_op, feed_dict=feed_dict)
 			print('Loss: ', loss)
 
