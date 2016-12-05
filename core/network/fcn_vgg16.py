@@ -141,20 +141,13 @@ class FCN16VGG:
 
         return pred32s, pred16s, pred8s
 
-    # def train(self, total_loss, learning_rate ):
-    def train(self, params, batch, label):
-        # To be implemented Later
-        # Mini-batch
-        # Minimize loss
-        # Add necessary params to summary
-        # Return train_op
 
-        # Build the base model
-        # batch_ = tf.reshape(batch, [1, tf.shape(batch)[2], tf.shape(batch)[3], 3])
-        # print('shape of input: ', tf.shape(batch)[0], tf.shape(batch)[1], tf.shape(batch)[2], tf.shape(batch)[3])
+    # def train(self, total_loss, learning_rate ):
+    def train(self, params, batch, label, bias_mul_diag, bias_add_vec):
+        # Build network model
         model = self._build_model(batch, params['num_classes'], is_train=True, random_init_fc8=True)
 
-        # FCN-32s
+        # Calculate socore for each pixel
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
                                      "upscore32",
                                      tf.shape(batch),   # reshape to original input image size
@@ -163,8 +156,24 @@ class FCN16VGG:
         old_shape = tf.shape(upscore32)
         new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
         prediction = tf.reshape(upscore32, new_shape)
+       
+       
+        # Ignore boundary pixels        
+        # Construct diagonal matrix and hot-one matrix
+        bias_mul = tf.diag(bias_mul_diag,)   
+        bias_add = tf.one_hot(bias_add_vec, depth= params['num_classes'], on_value=1, off_value=0,axis=-1)
+
+        # Cast dtype for mul and add
+        bias_add = tf.cast(bias_add, tf.float32)
+        bias_mul = tf.cast(bias_mul, tf.float32)
+
+        # Error here 
+        prediction = tf.add(tf.matmul(bias_mul, prediction),bias_add)
+        #p_ = tf.add(tf.slice(prediction_matrix, [0,22], [-1,1]), bias_add)
+        
 
         truth = tf.reshape(label, [new_shape[0]])
+
         # truth has uint8 type, has to be casted to tf.int32 to cal loss
         truth_ = tf.cast(truth, tf.int32)
 
