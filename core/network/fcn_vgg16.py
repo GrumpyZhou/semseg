@@ -141,13 +141,27 @@ class FCN16VGG:
 
         return pred32s, pred16s, pred8s
 
-
     # def train(self, total_loss, learning_rate ):
-    def train(self, params, batch, label, bias_mul_diag, bias_add_vec):
-        # Build network model
+    def train(self, params, batch, label, num_pixels, sparse_values, add_bias):
+        '''
+        Note Dtype:
+        batch: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
+        label: reshaped image label, shape=[Height*Width], tf.int32, numpy ndarray
+        sparse_matrix: sparse-diagonal! shape=Height*Width, tf.float32,  scipy spare-diag
+        add_bias: {0,1} vector, shape = shape=[Height*Width], tf.int32, numpy ndarray
+        '''
+        # To be implemented Later
+        # Mini-batch
+        # Minimize loss
+        # Add necessary params to summary
+        # Return train_op
+
+        # Build the base model
+        # batch_ = tf.reshape(batch, [1, tf.shape(batch)[2], tf.shape(batch)[3], 3])
+        # print('shape of input: ', tf.shape(batch)[0], tf.shape(batch)[1], tf.shape(batch)[2], tf.shape(batch)[3])
         model = self._build_model(batch, params['num_classes'], is_train=True, random_init_fc8=True)
 
-        # Calculate socore for each pixel
+        # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
                                      "upscore32",
                                      tf.shape(batch),   # reshape to original input image size
@@ -156,40 +170,66 @@ class FCN16VGG:
         old_shape = tf.shape(upscore32)
         new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
         prediction = tf.reshape(upscore32, new_shape)
-       
-       
-        # Ignore boundary pixels        
-        # Construct diagonal matrix and hot-one matrix
-        bias_mul = tf.diag(bias_mul_diag,)   
-        bias_add = tf.one_hot(bias_add_vec, depth= params['num_classes'], on_value=1, off_value=0,axis=-1)
-
-        # Cast dtype for mul and add
-        bias_add = tf.cast(bias_add, tf.float32)
-        bias_mul = tf.cast(bias_mul, tf.float32)
-
-        # Error here 
-        prediction = tf.add(tf.matmul(bias_mul, prediction),bias_add)
-        #p_ = tf.add(tf.slice(prediction_matrix, [0,22], [-1,1]), bias_add)
-        
-
-        truth = tf.reshape(label, [new_shape[0]])
+        # num_pixels = tf.cast(new_shape[0], tf.int64)
 
         # truth has uint8 type, has to be casted to tf.int32 to cal loss
-        truth_ = tf.cast(truth, tf.int32)
+        # truth = tf.reshape(label, [new_shape[0]])
+        # truth_ = tf.cast(truth, tf.int32)
+
+        # apply sparse matrix multiplication, only available for float32 dtype
+        # sparse_matrix_ = tf.cast(sparse_matrix, tf.float32)
+        # pred_mul = tf.matmul(sparse_matrix_, prediction, a_is_sparse=True)
+        single_indices = np.arange(num_pixels)
+        single_indices_ = tf.cast(single_indices, tf.int64)
+        single_indices_f = tf.reshape(single_indices_, [num_pixels, 1])
+
+        # single_indices_ = tf.reshape(single_indices, [new_shape[0], 1])
+        sparse_indices = tf.concat(1, [single_indices_f, single_indices_f])
+        spare_diag_matrix = tf.SparseTensor(sparse_indices, sparse_values, [num_pixels, num_pixels])
+        pred_mul = tf.sparse_tensor_dense_matmul(spare_diag_matrix, prediction)
+
+        # slice the last column and add it to the add_bias_reshaped
+        add_bias_ = tf.cast(add_bias, tf.float32)
+        last_col = tf.add(tf.slice(pred_mul, [0,22], [-1,1]), add_bias_)
+        # slice the first 21 columns
+        matrix_left = tf.slice(pred_mul, [0,0], [-1, params['num_classes']-1])
+        # concatenate the first 21 columns and the last column
+        last_col_ = tf.reshape(last_col, [num_pixels, 1])
+        pred_final = tf.concat(1, [matrix_left, last_col_])
+
 
         # find all indices where the pixel label is 255,
         # this must be excluded from calculating cross-entropy
         # truth_1 = tf.contrib.util.make_tensor_proto(truth_)
-        '''
-        truth_array = tf.contrib.util.make_ndarray(truth_)
-        ii = tf.where(truth_array == 255)   # find all indices where element value is 255
-        truth_array_ =  np.delete(truth_array, ii)  # delete all elements equal to 255
-        # # the same preprocessing for predictions
-        prediction_array = tf.contrib.util.make_ndarray(prediction)
-        prediction_array_ = np.delete(prediction_array, ii, 0)
-        '''
+        # truth_array = tf.contrib.util.make_ndarray(truth_.eval(sess))
+        # truth_array = truth_.eval(sess)
+        # ii = tf.where(truth_ == 255)   # find all indices where element value is 255
+        # dim = old_shape[1] * old_shape[2]
+        # xx = tf.ones( [dim] )
+        # np.put(xx, ii, [0])
+        # yy = tf.diag(xx)
+        # truth_1 = tf.matmul(yy, prediction)
 
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth_))
+        # # vector to be concatenated to zero matrix
+        # xx_1 = tf.zeros([old_shape[1]*old_shape[2]])
+        # np.put(xx_1, ii, [1])
+
+        # # create zero matrix and concatenate with a vector
+        # new_shape_ = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']-1]
+        # yy1 = tf.zeros(new_shape_, dtype=tf.float32)
+        # yy1_t = tf.transpose(yy1)
+        # yy1_con = tf.concat(0,xx_1)
+        # yy1_final = tf.tranpose(yy1_con)
+
+        # # create final prediction
+        # prediction_ = tf.add(truth_1, yy1_final)
+
+        # truth_array_ =  np.delete(truth_array, ii)  # delete all elements equal to 255
+        # # # the same preprocessing for predictions
+        # prediction_array = tf.contrib.util.make_ndarray(prediction)
+        # prediction_array_ = np.delete(prediction_array, ii, 0)
+
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred_final, label))
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         return train_step, loss

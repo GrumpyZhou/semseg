@@ -80,7 +80,7 @@ class VOCDataSet():
         image = np.array(img, dtype=np.float32)
         image = image[:,:,::-1]     # RGB -> BGR
         image -= self.mean
-        #image = image.transpose((2,0,1)) 
+        #image = image.transpose((2,0,1))
         return image
 
     def load_label(self,idx):
