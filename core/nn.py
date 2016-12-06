@@ -86,6 +86,7 @@ def score_layer(var_dict, x, name, num_classes, random=True, stddev=0.001, feed_
                 # TODO: load weights from VGG16-net
                 name = 'fc8'
                 shape = [1,1,4096, 1000]
+                score = fully_conv_layer(var_dict, x, feed_dict, name, shape, relu=False)
             else:
                 shape = [1,1,4096, 22]
                 score = fully_conv_layer(var_dict, x, feed_dict, name, shape, relu=False)
@@ -122,6 +123,8 @@ def upscore_layer(x, name, shape, num_class, ksize=4, stride=2):
     return deconv
 
 def get_conv_kernel(var_dict, feed_dict, name):
+    if not feed_dict.has_key(name):
+        print("Weights databast has no name: ", name)
     kernel = feed_dict[name][0]
     shape = kernel.shape
     #print('Layer name: %s' % name)
@@ -135,6 +138,8 @@ def get_conv_kernel(var_dict, feed_dict, name):
     return var
 
 def get_bias(var_dict, feed_dict, name):
+    if not feed_dict.has_key(name):
+        print("Weights databast has no name: ", name)
     bias = feed_dict[name][1]
     shape = bias.shape
     #print('Layer name: %s' % name)
@@ -149,6 +154,8 @@ def get_bias(var_dict, feed_dict, name):
 def get_fconv_weight(var_dict, feed_dict, name, shape, num_class=None):
     #print('Layer name: %s' % name)
     #print('Layer shape: %s' % shape)
+    if not feed_dict.has_key(name):
+        print("Weights databast has no name: ", name)
     weights = feed_dict[name][0]
     weights = weights.reshape(shape)
     init = tf.constant_initializer(value=weights,

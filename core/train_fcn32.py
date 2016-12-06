@@ -36,7 +36,7 @@ train_dataset = dt.VOCDataSet(train_data_config)
 
 # Hyper-parameters
 batch_size = 2
-iterations = 1
+iterations = 2
 
 
 with tf.Session() as sess:

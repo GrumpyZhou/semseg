@@ -29,6 +29,7 @@ train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
           'seed': None}
 params = {'num_classes': 22,
         'load-weights': 'fcn32-semantic.npy',
+        # 'load-weights': 'vgg16.npy',
         'trained-weights': None}
 
 train_dataset = dt.VOCDataSet(train_data_config)
