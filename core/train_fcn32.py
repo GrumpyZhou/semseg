@@ -28,13 +28,13 @@ train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
           'dataset':'train',
           'randomize': True,
           'seed': None}
-params = {'num_classes': 22, 'rate': 1e-4}
+params = {'num_classes': 22, 'rate': 1e-4, 'weights-data': 'data/fcn32-semantic.npy'}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 
 # Hyper-parameters
 batch_size = 2
-iterations = 2
+iterations = 1
 
 
 with tf.Session() as sess:
@@ -47,17 +47,18 @@ with tf.Session() as sess:
 	sparse_values = tf.placeholder(tf.float32, shape=[None])
 	sparse_bias = tf.placeholder(tf.float32, shape=[None])
 	# create model and train op
-	[train_op, loss] = vgg_fcn32s.train(params=params, image=batch, truth=label,
+	[train_op, loss] = vgg_fcn32s.train_fcn32(params=params, image=batch, truth=label,
 										diag_indices = sparse_indices,
 										diag_values = sparse_values,
 										add_bias = sparse_bias)
 
-	print('Finished building network.')
+	print('Finished building network-fcn32.')
 	init = tf.initialize_all_variables()
 	sess.run(init)
 
-	print('Start training ...')
+	print('Start training fcn32...')
 	for i in range(iterations):
+		print("iter: ", i)
 		for j in range(batch_size):
 			next_pair = train_dataset.next_batch()
 			image_height, image_width = tf.shape(next_pair[0])[1], tf.shape(next_pair[0])[2]
@@ -85,14 +86,11 @@ with tf.Session() as sess:
 			# replace all elements with value 255 with 21 -> params['num_classes']-1.0
 			np.put(next_pair_lable, ii, [params['num_classes']-1.0])
 
-			print("start feeding.")
-
 			feed_dict = {batch: next_pair_image, label: next_pair_lable,
 						sparse_indices: sparse_indices_feed,
 						sparse_values: sparse_values_feed,
 						sparse_bias: sparse_bias_feed}
-			print("start session run")
 			sess.run(train_op, feed_dict)
 			# print('Loss: ', loss)
-	print('Finished training')
-	save_weights(sess=sess, npy_path="data/fcn32-semantic.npy")
+	print('Finished training fcn32')
+	vgg_fcn32s.save_weights(sess=sess, npy_path=params['weights-data'])

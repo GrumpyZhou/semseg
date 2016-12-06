@@ -65,10 +65,10 @@ class FCN16VGG:
 
     def save_weights(self, sess=None, npy_path=None):
         assert isinstance(sess, tf.Session)
-        assert npy_path == None
+        assert npy_path != None
 
-        if sess == None:
-            print("No valid session! Saving file aborted!")
+        if sess == None or npy_path == None:
+            print("No valid session or path! Saving file aborted!")
         else:
             data_dict = {}
 
@@ -77,9 +77,8 @@ class FCN16VGG:
                 if not data_dict.has_key(name):
                     data_dict[name] = {}
                 data_dict[name][idx] = var_out
-            np.save()
+            np.save(npy_path, data_dict)
 
-        data_dict = (npy_path, data_dict)
         print("trained weights saved: ", npy_path)
         return npy_path
 
@@ -164,8 +163,8 @@ class FCN16VGG:
 
         return pred32s, pred16s, pred8s
 
-    # def train(self, total_loss, learning_rate ):
-    def train(self, params, image, truth, diag_indices, diag_values, add_bias):
+    # train model with an accuracy of 32-stride
+    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias):
         '''
         Note Dtype:
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
@@ -204,3 +203,9 @@ class FCN16VGG:
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         return train_step, loss
+
+    # use trained fcn32 model to inference
+    def inference_fcn32(self, image, num_classes, random_init_fc8=False):
+        # To be implemented
+        pass
+
