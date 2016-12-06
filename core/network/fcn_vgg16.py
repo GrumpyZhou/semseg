@@ -142,7 +142,7 @@ class FCN16VGG:
         return pred32s, pred16s, pred8s
 
     # def train(self, total_loss, learning_rate ):
-    def train(self, params, batch, label, num_pixels, sparse_values, add_bias):
+    def train(self, params, image, truth, diag_indices, diag_values, add_bias):
         '''
         Note Dtype:
         batch: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
@@ -159,18 +159,18 @@ class FCN16VGG:
         # Build the base model
         # batch_ = tf.reshape(batch, [1, tf.shape(batch)[2], tf.shape(batch)[3], 3])
         # print('shape of input: ', tf.shape(batch)[0], tf.shape(batch)[1], tf.shape(batch)[2], tf.shape(batch)[3])
-        model = self._build_model(batch, params['num_classes'], is_train=True, random_init_fc8=True)
+        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=True)
 
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
                                      "upscore32",
-                                     tf.shape(batch),   # reshape to original input image size
+                                     tf.shape(image),   # reshape to original input image size
                                      params['num_classes'],
                                      ksize=64, stride=32)
         old_shape = tf.shape(upscore32)
         new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
         prediction = tf.reshape(upscore32, new_shape)
-        # num_pixels = tf.cast(new_shape[0], tf.int64)
+        num_pixels = tf.cast(new_shape[0], tf.int64)
 
         # truth has uint8 type, has to be casted to tf.int32 to cal loss
         # truth = tf.reshape(label, [new_shape[0]])
@@ -179,23 +179,24 @@ class FCN16VGG:
         # apply sparse matrix multiplication, only available for float32 dtype
         # sparse_matrix_ = tf.cast(sparse_matrix, tf.float32)
         # pred_mul = tf.matmul(sparse_matrix_, prediction, a_is_sparse=True)
-        single_indices = np.arange(num_pixels)
-        single_indices_ = tf.cast(single_indices, tf.int64)
-        single_indices_f = tf.reshape(single_indices_, [num_pixels, 1])
+        # single_indices = np.arange(num_pixels)
+        # single_indices_ = tf.cast(single_indices, tf.int64)
+        # single_indices_f = tf.reshape(single_indices_, [num_pixels, 1])
 
         # single_indices_ = tf.reshape(single_indices, [new_shape[0], 1])
-        sparse_indices = tf.concat(1, [single_indices_f, single_indices_f])
-        spare_diag_matrix = tf.SparseTensor(sparse_indices, sparse_values, [num_pixels, num_pixels])
+        # sparse_indices = tf.concat(1, [single_indices_f, single_indices_f])
+        spare_diag_matrix = tf.SparseTensor(diag_indices, diag_values, [num_pixels, num_pixels])
         pred_mul = tf.sparse_tensor_dense_matmul(spare_diag_matrix, prediction)
 
         # slice the last column and add it to the add_bias_reshaped
-        add_bias_ = tf.cast(add_bias, tf.float32)
-        last_col = tf.add(tf.slice(pred_mul, [0,22], [-1,1]), add_bias_)
+        # add_bias_ = tf.cast(add_bias, tf.float32)
+        add_bias_ = tf.reshape(add_bias, [new_shape[0], 1]) # convert to column vector
+        last_col = tf.add(tf.slice(pred_mul, [0, params['num_classes']-1], [-1,1]), add_bias_)
         # slice the first 21 columns
         matrix_left = tf.slice(pred_mul, [0,0], [-1, params['num_classes']-1])
         # concatenate the first 21 columns and the last column
-        last_col_ = tf.reshape(last_col, [num_pixels, 1])
-        pred_final = tf.concat(1, [matrix_left, last_col_])
+        # last_col_ = tf.reshape(last_col, [num_pixels, 1])
+        pred_final = tf.concat(1, [matrix_left, last_col])
 
 
         # find all indices where the pixel label is 255,
@@ -229,7 +230,7 @@ class FCN16VGG:
         # prediction_array = tf.contrib.util.make_ndarray(prediction)
         # prediction_array_ = np.delete(prediction_array, ii, 0)
 
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred_final, label))
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred_final, truth))
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         return train_step, loss

@@ -44,15 +44,15 @@ with tf.Session() as sess:
 	batch = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 	label = tf.placeholder(tf.int32, shape=[None])	# lable is already vectorized before feed
 
-	# single_indices = tf.placeholder(tf.int64, shape=[None])
-	num_pixels = tf.placeholder(tf.int32, shape=[1])
+	sparse_indices = tf.placeholder(tf.int64, shape=[None,2])
+	# num_pixels = tf.placeholder(tf.int32, shape=[1])
 	sparse_values = tf.placeholder(tf.float32, shape=[None])
-	sparse_bias = tf.placeholder(tf.int32, shape=[None])
+	sparse_bias = tf.placeholder(tf.float32, shape=[None])
 	# create model and train op
-	[train_op, loss] = vgg_fcn32s.train(params=params, batch=batch, label=label,
-										#single_indices = single_indices,
-										num_pixels = num_pixels,
-										sparse_values = sparse_values,
+	[train_op, loss] = vgg_fcn32s.train(params=params, image=batch, truth=label,
+										diag_indices = sparse_indices,
+										# num_pixels = num_pixels,
+										diag_values = sparse_values,
 										add_bias = sparse_bias)
 
 	print('Finished building network.')
@@ -77,29 +77,29 @@ with tf.Session() as sess:
 
 			# create matrix (sparse square) to be left multiplied to the prediction matrix
 			ii = np.where(next_pair_lable == 255)   # find all indices where element value is 255
-			xx = np.ones(num_pixels)
-			np.put(xx, ii, [0])		# xx is the values of sparseTensor
-			sparse_values = tf.cast(xx, tf.float32)
+			sparse_values_feed = np.ones(num_pixels, dtype=np.float32)
+			np.put(sparse_values_feed, ii, [0.0])		# the values of sparse_values
+			#sparse_values = tf.cast(xx, tf.float32)
 
-			# single_indices = np.arange(num_pixels, dtype=np.int64)
+			single = np.arange(num_pixels, dtype=np.int64)
 			# single_indices_ = tf.cast(single_indices, tf.int64)
 			# single_indices = np.reshape(single, num_pixels)
 			# single_indices = tf.constant(single, dtype=tf.int64, shape=[num_pixels, 1])
-			# single_indices = np.reshape(single, (num_pixels,1))
-			# sparse_indices = np.concatenate((single_column, single_column), axis=1)
+			single_indices = np.reshape(single, (num_pixels,1))	# to column vector
+			sparse_indices_feed = np.concatenate((single_indices, single_indices), axis=1)	# to double column
 			# sparse_indices_ = tf.constant(sparse_indices, dtype=tf.int64, shape=[num_pixels,2])
 			# spare_diag_matrix = tf.SparseTensor(sparse_indices, sparse_values, [num_pixels, num_pixels])
 			# spare_diag_matrix = scp.sparse.dia_matrix((xx, [0]), shape=(num_pixels, num_pixels))
 
 			# create the vector to be added to the last column
-			yy = np.zeros(num_pixels)
-			np.put(yy, ii, [1])
+			sparse_bias_feed = np.zeros(num_pixels, dtype=np.float32)
+			np.put(sparse_bias_feed, ii, [1.0])
 
 			feed_dict = {batch: next_pair_image, label: next_pair_lable,
-						#single_indices: single_indices_,
-						num_pixels: num_pixels,
-						sparse_values: sparse_values,
-						sparse_bias: yy}
+						sparse_indices: sparse_indices_feed,
+						# num_pixels: num_pixels,
+						sparse_values: sparse_values_feed,
+						sparse_bias: sparse_bias_feed}
 			_ = sess.run(train_op, feed_dict=feed_dict)
 			print('Loss: ', loss)
 
