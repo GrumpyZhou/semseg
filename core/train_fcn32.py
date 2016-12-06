@@ -31,7 +31,6 @@ train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
 params = {'num_classes': 22, 'rate': 1e-4}
 
 train_dataset = dt.VOCDataSet(train_data_config)
-# data_batch = train_dataset.next_batch()
 
 # Hyper-parameters
 batch_size = 2
@@ -45,13 +44,11 @@ with tf.Session() as sess:
 	label = tf.placeholder(tf.int32, shape=[None])	# lable is already vectorized before feed
 
 	sparse_indices = tf.placeholder(tf.int64, shape=[None,2])
-	# num_pixels = tf.placeholder(tf.int32, shape=[1])
 	sparse_values = tf.placeholder(tf.float32, shape=[None])
 	sparse_bias = tf.placeholder(tf.float32, shape=[None])
 	# create model and train op
 	[train_op, loss] = vgg_fcn32s.train(params=params, image=batch, truth=label,
 										diag_indices = sparse_indices,
-										# num_pixels = num_pixels,
 										diag_values = sparse_values,
 										add_bias = sparse_bias)
 
@@ -68,39 +65,34 @@ with tf.Session() as sess:
 			image_height_val, image_width_val = image_height.eval(), image_width.eval()
 			num_pixels = image_height_val * image_width_val
 
-			# next_pair_image = tf.reshape(next_pair[0], [1, tf.shape(next_pair[0])[1], tf.shape(next_pair[0])[2], 3])
 			next_pair_image = next_pair[0]	# already numpy tuple
 			next_pair_lable = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector in order to extract indices
-			# next_pair_lable_ = np.reshape(next_pair[1], (num_pixels,1))	# reshape to column vector to feed_dict
-			# next_pair_image_ = next_pair_image.eval()		# Convert to python numpy array
-			# next_pair_lable_ = next_pair_lable.eval()		# Convert to python numpy array
 
-			# create matrix (sparse square) to be left multiplied to the prediction matrix
+			# create values on the diagonal
 			ii = np.where(next_pair_lable == 255)   # find all indices where element value is 255
 			sparse_values_feed = np.ones(num_pixels, dtype=np.float32)
 			np.put(sparse_values_feed, ii, [0.0])		# the values of sparse_values
-			#sparse_values = tf.cast(xx, tf.float32)
 
 			single = np.arange(num_pixels, dtype=np.int64)
-			# single_indices_ = tf.cast(single_indices, tf.int64)
-			# single_indices = np.reshape(single, num_pixels)
-			# single_indices = tf.constant(single, dtype=tf.int64, shape=[num_pixels, 1])
 			single_indices = np.reshape(single, (num_pixels,1))	# to column vector
-			sparse_indices_feed = np.concatenate((single_indices, single_indices), axis=1)	# to double column
-			# sparse_indices_ = tf.constant(sparse_indices, dtype=tf.int64, shape=[num_pixels,2])
-			# spare_diag_matrix = tf.SparseTensor(sparse_indices, sparse_values, [num_pixels, num_pixels])
-			# spare_diag_matrix = scp.sparse.dia_matrix((xx, [0]), shape=(num_pixels, num_pixels))
+			# to double column vectors, requested by tensorflow sparse tensor creation
+			sparse_indices_feed = np.concatenate((single_indices, single_indices), axis=1)
 
 			# create the vector to be added to the last column
 			sparse_bias_feed = np.zeros(num_pixels, dtype=np.float32)
 			np.put(sparse_bias_feed, ii, [1.0])
 
+			# replace all elements with value 255 with 21
+			np.put(next_pair_lable, ii, [21.0])
+
+			print("start feeding.")
+
 			feed_dict = {batch: next_pair_image, label: next_pair_lable,
 						sparse_indices: sparse_indices_feed,
-						# num_pixels: num_pixels,
 						sparse_values: sparse_values_feed,
 						sparse_bias: sparse_bias_feed}
-			_ = sess.run(train_op, feed_dict=feed_dict)
-			print('Loss: ', loss)
+			print("start session run")
+			sess.run(train_op, feed_dict)
+			# print('Loss: ', loss)
 
 	print('Finished training')
