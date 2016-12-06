@@ -28,7 +28,9 @@ train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
           'dataset':'train',
           'randomize': True,
           'seed': None}
-params = {'num_classes': 22, 'rate': 1e-4, 'weights-data': 'data/fcn32-semantic.npy'}
+params = {'num_classes': 22, 'rate': 1e-4,
+		'load-weights': 'vgg16.npy',
+		'trained-weights': 'data/fcn32-semantic.npy'}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 
@@ -39,7 +41,7 @@ iterations = 1
 
 with tf.Session() as sess:
 	# Init CNN -> load pre-trained weights from VGG16.
-	vgg_fcn32s = FCN16VGG('data')
+	vgg_fcn32s = FCN16VGG('data', params['load-weights'])
 	batch = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 	label = tf.placeholder(tf.int32, shape=[None])	# lable is already vectorized before feed
 
@@ -93,4 +95,4 @@ with tf.Session() as sess:
 			sess.run(train_op, feed_dict)
 			# print('Loss: ', loss)
 	print('Finished training fcn32')
-	vgg_fcn32s.save_weights(sess=sess, npy_path=params['weights-data'])
+	vgg_fcn32s.save_weights(sess=sess, npy_path=params['trained-weights'])

@@ -20,33 +20,50 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # from tensorflow.python.framework import ops
-
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-test_img2 = skimage.io.imread("./data/test_img/tabby_cat.png")
-test_img1 = skimage.io.imread("./data/test_img/01_thumb.jpg")
+# Import training and validation dataset
+train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
+          'dataset':'val',
+          'randomize': True,
+          'seed': None}
+params = {'num_classes': 22,
+        'load-weights': 'fcn32-semantic.npy',
+        'trained-weights': None}
+
+train_dataset = dt.VOCDataSet(train_data_config)
+
+# hyper-parameter
+num_images = 1
+
+# test_img2 = skimage.io.imread("./data/test_img/tabby_cat.png")
+test_img1 = skimage.io.imread("./data/test_img/person_bike.jpg")
 
 with tf.Session() as sess:
-    images = tf.placeholder("float")
-    feed_dict = {images: test_img1}
-    batch_images = tf.expand_dims(images, 0)
+    # Init model and load approriate weights-data
+    vgg_fcn32 = FCN16VGG('data', params['load-weights'])
+    image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
-    vgg_fcn = FCN16VGG('data')
-    [pred32, pred16, pred8] = vgg_fcn.inference(batch_images, num_classes=20)
-    preds = [pred32, pred16, pred8]
+    # Build fcn32 model
+    pred32 = vgg_fcn32.inference_fcn32(image, num_classes=params['num_classes'], random_init_fc8=False)
 
-    print('Finished building Network.')
-
+    print('Finished building inference network-fcn32.')
     init = tf.initialize_all_variables()
-    sess.run(tf.initialize_all_variables())
+    sess.run(init)
 
-    print('Running the Network')
-    # pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
-    pred32, pred16, pred8 = sess.run(preds, feed_dict=feed_dict)
-    pred32_color = dt.color_image(pred32[0])
-    pred16_color = dt.color_image(pred16[0])
-    pred8_color = dt.color_image(pred8[0])
+    print('Running the inference_fcn32 ...')
+    for i in range(num_images):
+        print("image ", i)
+        # next_pair = train_dataset.next_batch()
+        # feed_dict = {image: next_pair[0]}
 
-    scp.misc.imsave('./data/test_img/fcn32.png', pred32_color)
-    scp.misc.imsave('./data/test_img/fcn16.png', pred16_color)
-    scp.misc.imsave('./data/test_img/fcn8.png', pred8_color)
+        image_height, image_width = tf.shape(test_img1)[0], tf.shape(test_img1)[1]
+        # convert to numpy integers
+        image_height_val, image_width_val = image_height.eval(), image_width.eval()
+        feed_image = np.reshape(test_img1, (1, image_height_val, image_width_val,3))
+        feed_dict = {image: feed_image}
+
+        preds = sess.run(pred32, feed_dict=feed_dict)
+
+        pred32_color = dt.color_image(preds[0], num_classes=22)
+        scp.misc.imsave('./data/test_img/person_bike_pred.png', pred32_color)

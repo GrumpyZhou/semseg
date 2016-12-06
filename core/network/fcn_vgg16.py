@@ -19,9 +19,9 @@ DATA_DIR = 'data'
 
 class FCN16VGG:
 
-    def __init__(self, data_dir=None):
+    def __init__(self, data_dir=None, data_name=None):
         # Load VGG16 pretrained weight
-        data_dict = dt.load_vgg16_weight(data_dir)
+        data_dict = dt.load_vgg16_weight(data_dir, data_name)
         self.data_dict = data_dict
 
         # used to save trained weights
@@ -206,6 +206,25 @@ class FCN16VGG:
 
     # use trained fcn32 model to inference
     def inference_fcn32(self, image, num_classes, random_init_fc8=False):
-        # To be implemented
-        pass
+        '''
+        Use trained fcn32 weights to do inference
+        '''
+        # Image preprocess: RGB -> BGR
+        red, green, blue = tf.split(3, 3, image)
+        image = tf.concat(3, [blue, green, red])
+
+        # Basic model
+        model = self._build_model(image, num_classes, is_train=False, random_init_fc8=False)
+
+        # FCN-32s, return image size of [1, Height, Width, num_classes]
+        upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
+                                     "upscore32",
+                                     tf.shape(image),   # reshape to original input image size
+                                     num_classes,
+                                     ksize=64, stride=32)
+
+        # Prediction
+        pred32s = tf.argmax(upscore32, dimension=3)
+
+        return pred32s
 
