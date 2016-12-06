@@ -82,8 +82,8 @@ with tf.Session() as sess:
 			sparse_bias_feed = np.zeros(num_pixels, dtype=np.float32)
 			np.put(sparse_bias_feed, ii, [1.0])
 
-			# replace all elements with value 255 with 21
-			np.put(next_pair_lable, ii, [21.0])
+			# replace all elements with value 255 with 21 -> params['num_classes']-1.0
+			np.put(next_pair_lable, ii, [params['num_classes']-1.0])
 
 			print("start feeding.")
 
@@ -94,5 +94,5 @@ with tf.Session() as sess:
 			print("start session run")
 			sess.run(train_op, feed_dict)
 			# print('Loss: ', loss)
-
 	print('Finished training')
+	save_weights(sess=sess, npy_path="data/fcn32-semantic.npy")

@@ -24,41 +24,64 @@ class FCN16VGG:
         data_dict = dt.load_vgg16_weight(data_dir)
         self.data_dict = data_dict
 
+        # used to save trained weights
+        self.var_dict = {}
+
         # Init other necessary parameters
     def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False):
         model = {}
         feed_dict = self.data_dict
 
-        model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1")
-        model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2")
+        model['conv1_1'] = nn.conv_layer(self.var_dict, image, feed_dict, "conv1_1")
+        model['conv1_2'] = nn.conv_layer(self.var_dict, model['conv1_1'], feed_dict, "conv1_2")
         model['pool1'] = nn.max_pool_layer(model['conv1_2'], "pool1")
 
-        model['conv2_1'] = nn.conv_layer(model['pool1'], feed_dict, "conv2_1")
-        model['conv2_2'] = nn.conv_layer(model['conv2_1'], feed_dict, "conv2_2")
+        model['conv2_1'] = nn.conv_layer(self.var_dict, model['pool1'], feed_dict, "conv2_1")
+        model['conv2_2'] = nn.conv_layer(self.var_dict, model['conv2_1'], feed_dict, "conv2_2")
         model['pool2'] = nn.max_pool_layer(model['conv2_2'], "pool2")
 
-        model['conv3_1'] = nn.conv_layer(model['pool2'], feed_dict, "conv3_1")
-        model['conv3_2'] = nn.conv_layer(model['conv3_1'], feed_dict, "conv3_2")
-        model['conv3_3'] = nn.conv_layer(model['conv3_2'], feed_dict, "conv3_3")
+        model['conv3_1'] = nn.conv_layer(self.var_dict, model['pool2'], feed_dict, "conv3_1")
+        model['conv3_2'] = nn.conv_layer(self.var_dict, model['conv3_1'], feed_dict, "conv3_2")
+        model['conv3_3'] = nn.conv_layer(self.var_dict, model['conv3_2'], feed_dict, "conv3_3")
         model['pool3'] = nn.max_pool_layer(model['conv3_3'], "pool3")
 
-        model['conv4_1'] = nn.conv_layer(model['pool3'], feed_dict, "conv4_1")
-        model['conv4_2'] = nn.conv_layer(model['conv4_1'], feed_dict, "conv4_2")
-        model['conv4_3'] = nn.conv_layer(model['conv4_2'], feed_dict, "conv4_3")
+        model['conv4_1'] = nn.conv_layer(self.var_dict, model['pool3'], feed_dict, "conv4_1")
+        model['conv4_2'] = nn.conv_layer(self.var_dict, model['conv4_1'], feed_dict, "conv4_2")
+        model['conv4_3'] = nn.conv_layer(self.var_dict, model['conv4_2'], feed_dict, "conv4_3")
         model['pool4'] = nn.max_pool_layer(model['conv4_3'], "pool4")
 
 
-        model['conv5_1'] = nn.conv_layer(model['pool4'], feed_dict, "conv5_1")
-        model['conv5_2'] = nn.conv_layer(model['conv5_1'], feed_dict, "conv5_2")
-        model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3")
+        model['conv5_1'] = nn.conv_layer(self.var_dict, model['pool4'], feed_dict, "conv5_1")
+        model['conv5_2'] = nn.conv_layer(self.var_dict, model['conv5_1'], feed_dict, "conv5_2")
+        model['conv5_3'] = nn.conv_layer(self.var_dict, model['conv5_2'], feed_dict, "conv5_3")
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
 
-        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5)
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5)
+        model['fconv6'] = nn.fully_conv_layer(self.var_dict, model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5)
+        model['fconv7'] = nn.fully_conv_layer(self.var_dict, model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5)
 
-        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict)
+        model['score_fr'] = nn.score_layer(self.var_dict, model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict)
         return model
+
+    def save_weights(self, sess=None, npy_path=None):
+        assert isinstance(sess, tf.Session)
+        assert npy_path == None
+
+        if sess == None:
+            print("No valid session! Saving file aborted!")
+        else:
+            data_dict = {}
+
+            for (name, idx), var in self.var_dict.items():
+                var_out = sess.run(var)
+                if not data_dict.has_key(name):
+                    data_dict[name] = {}
+                data_dict[name][idx] = var_out
+            np.save()
+
+        data_dict = (npy_path, data_dict)
+        print("trained weights saved: ", npy_path)
+        return npy_path
 
     def inference(self, image, num_classes, random_init_fc8=False):
         # Image preprocess: RGB -> BGR
@@ -152,6 +175,7 @@ class FCN16VGG:
         add_bias: {0,1} vector, shape = shape=[Height*Width], tf.float32, numpy ndarray
         '''
 
+        # Important: When training, random_init_fc8=True. When inference, random_init_fc8=False
         model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=True)
 
         # FCN-32s

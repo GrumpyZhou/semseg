@@ -116,7 +116,7 @@ def load_vgg16_weight(path):
     print("Successfullt load vgg16 weight from %s."%fpath)
     return data_dict
 
-def color_image(image, num_classes=20):
+def color_image(image, num_classes=22):
     import matplotlib as mpl
     norm = mpl.colors.Normalize(vmin=0., vmax=num_classes)
     mycm = mpl.cm.get_cmap('Set1')
