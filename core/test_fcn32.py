@@ -28,7 +28,7 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'randomize': True,
                      'seed': None}
 params = {'num_classes': 22, 'rate': 1e-4,
-          'trained_weight_path':'data/vgg16.npy'}
+          'trained_weight_path':'data/fcn32s.npy'}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 
