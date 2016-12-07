@@ -33,13 +33,14 @@ def conv_layer(x, feed_dict, name, stride=1, var_dict=None):
 
     return conv_out
 
-def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_prob=0.5,var_dict=None):
+def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_prob=0.5, random=False, var_dict=None):
     with tf.variable_scope(name) as scope:
-        kernel = get_fconv_weight(feed_dict, name, shape)
+        
+        kernel = get_fconv_weight(feed_dict, name, shape, random=random)
         conv = tf.nn.conv2d(x, kernel,
                             strides = [1, 1, 1, 1],
                             padding = 'SAME')
-        bias = get_bias(feed_dict, name)
+        bias = get_bias(feed_dict, name, shape=[shape[3]], random=random)
         print("bias shape, fully conv %s: %s" % (name, bias.get_shape()))
         print("kernel shape, fully conv %s: %s" % (name, kernel.get_shape()))
         conv_out = tf.nn.bias_add(conv, bias)
@@ -48,7 +49,6 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
             conv_out =  tf.nn.relu(conv_out)
         if dropout:
             conv_out = tf.nn.dropout(conv_out, keep_prob)
-
 
     if var_dict is not None:
         var_dict[name] = (kernel, bias)
@@ -92,11 +92,11 @@ def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None,
                 # TODO: load weights from VGG16-net
                 name = 'fc8'
                 shape = [1,1,4096, 1000]
-                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, var_dict=var_dict)
+                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, random=random, var_dict=var_dict)
 
             else:
                 shape = [1,1,4096, 22]
-                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, var_dict=var_dict)
+                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, random=random, var_dict=var_dict)
 
 
     return score
@@ -142,27 +142,36 @@ def get_conv_kernel(feed_dict, name):
     var = tf.get_variable(name="kernel", initializer=init, shape=shape)
     return var
 
-def get_bias(feed_dict, name):
-    if not feed_dict.has_key(name):
-        print("Weights databast has no name: ", name)
-    bias = feed_dict[name][1]
-    shape = bias.shape
-    #print('Layer name: %s' % name)
-    #print('Layer bias shape: %s' % str(shape))
-
-    init = tf.constant_initializer(value=bias, dtype=tf.float32)
+def get_bias(feed_dict, name, shape=None, random=False):
+    if not random:
+        if not feed_dict.has_key(name):
+            print("Feed_dict doesn't contain key:%s, initialize a random bias", name)
+            init = tf.constant_initializer(0.1, dtype=tf.float32)
+        else:
+            bias = feed_dict[name][1]
+            init = tf.constant_initializer(value=bias, dtype=tf.float32)        
+            shape = bias.shape
+            #print('Layer name: %s' % name)
+            #print('Layer bias shape: %s' % str(shape))
+    else:
+        init = tf.constant_initializer(0.1, dtype=tf.float32)
+        
     var = tf.get_variable(name="bias", initializer=init, shape=shape)
     return var
 
-def get_fconv_weight(feed_dict, name, shape, num_class=None):
+def get_fconv_weight(feed_dict, name, shape, num_class=None, random=False):
     #print('Layer name: %s' % name)
     #print('Layer shape: %s' % shape)
-    if not feed_dict.has_key(name):
-        print("Weights databast has no name: ", name)
-    weights = feed_dict[name][0]
-    weights = weights.reshape(shape)
-    init = tf.constant_initializer(value=weights,
+    if not random:
+        if not feed_dict.has_key(name):
+            print("Feed_dict doesn't contain key:%s, initialize a random weight", name)
+            init = tf.truncated_normal_initializer(stddev=0.1, dtype=tf.float32)
+        weights = feed_dict[name][0]
+        weights = weights.reshape(shape)
+        init = tf.constant_initializer(value=weights,
                                     dtype=tf.float32)
+    else:
+        init = tf.truncated_normal_initializer(stddev=0.1, dtype=tf.float32)
     var = tf.get_variable(name="weight", initializer=init, shape=shape)
     return var
 

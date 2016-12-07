@@ -34,25 +34,28 @@ class VOCDataSet():
             random.seed(self.seed)
             self.idx = random.randint(0, len(self.indices)-1)
 
-    def next_batch(self):
+    def next_batch(self, predef_inx=None):
         """
         Processing data:
         - Random index selection(if set)
         - Reshape image and label, extend 1st axis for batch dimension
         - Return: (image, label)
         """
-
-        # pick next input
-        if self.random:
-            self.idx = random.randint(0, len(self.indices)-1)
+        if predef_inx is None:
+            # pick next input
+            if self.random:
+                self.idx = random.randint(0, len(self.indices)-1)
+            else:
+                self.idx += 1
+                if self.idx == len(self.indices):
+                    self.idx = 0
+            idx_str = self.indices[self.idx]
         else:
-            self.idx += 1
-            if self.idx == len(self.indices):
-                self.idx = 0
-        print('Batch index: %d'% self.idx)
-
-        image = self.load_image(self.indices[self.idx])
-        label = self.load_label(self.indices[self.idx])
+            idx_str = predef_inx
+            
+        print('Batch index string: %s'% idx_str)
+        image = self.load_image(idx_str)
+        label = self.load_label(idx_str)
 
         image = image.reshape(1, *image.shape)
         label = label.reshape(1, *label.shape)

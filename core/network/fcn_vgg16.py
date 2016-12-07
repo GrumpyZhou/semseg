@@ -62,13 +62,14 @@ class FCN16VGG:
         model['conv5_2'] = nn.conv_layer(model['conv5_1'], feed_dict, "conv5_2", var_dict=var_dict)
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3", var_dict=var_dict)
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
-        
-        # Vgg use the filter because the input image is fixed size: 224 * 224, but it might affect our training because our image size vary
-        vgg_f6_shape = [7, 7, 512, 4096]
-        vgg_f7_shape = [1, 1, 4096, 4096] # we can stick to this one
-        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", vgg_f6_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
 
+        # [7, 7, 512, 4096] Replace 7*7 conv kernel with 3 3*3 conv kernals   
+        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6_1", [3, 3, 512, 512], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
+        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict, "fc6_2", [3, 3, 512, 512], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
+        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict, "fc6_3", [3, 3, 512, 4096], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
+
+        vgg_f7_shape = [1, 1, 4096, 4096] # we can stick to this one
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, "fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
         model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict, var_dict=var_dict)
         
         return model
