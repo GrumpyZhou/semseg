@@ -28,39 +28,48 @@ class FCN16VGG:
         self.var_dict = {}
 
         # Init other necessary parameters
-    def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False):
+def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False, save_var=False):
         model = {}
         feed_dict = self.data_dict
+        if save_var:
+            var_dict = self.var_dict
+        else:
+            var_dict = None
 
-        model['conv1_1'] = nn.conv_layer(self.var_dict, image, feed_dict, "conv1_1")
-        model['conv1_2'] = nn.conv_layer(self.var_dict, model['conv1_1'], feed_dict, "conv1_2")
+        print('Save_var',save_var)
+
+        model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
+        model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2", var_dict=var_dict)
         model['pool1'] = nn.max_pool_layer(model['conv1_2'], "pool1")
 
-        model['conv2_1'] = nn.conv_layer(self.var_dict, model['pool1'], feed_dict, "conv2_1")
-        model['conv2_2'] = nn.conv_layer(self.var_dict, model['conv2_1'], feed_dict, "conv2_2")
+        model['conv2_1'] = nn.conv_layer(model['pool1'], feed_dict, "conv2_1", var_dict=var_dict)
+        model['conv2_2'] = nn.conv_layer(model['conv2_1'], feed_dict, "conv2_2", var_dict=var_dict)
         model['pool2'] = nn.max_pool_layer(model['conv2_2'], "pool2")
 
-        model['conv3_1'] = nn.conv_layer(self.var_dict, model['pool2'], feed_dict, "conv3_1")
-        model['conv3_2'] = nn.conv_layer(self.var_dict, model['conv3_1'], feed_dict, "conv3_2")
-        model['conv3_3'] = nn.conv_layer(self.var_dict, model['conv3_2'], feed_dict, "conv3_3")
+        model['conv3_1'] = nn.conv_layer(model['pool2'], feed_dict, "conv3_1", var_dict=var_dict)
+        model['conv3_2'] = nn.conv_layer(model['conv3_1'], feed_dict, "conv3_2", var_dict=var_dict)
+        model['conv3_3'] = nn.conv_layer(model['conv3_2'], feed_dict, "conv3_3", var_dict=var_dict)
         model['pool3'] = nn.max_pool_layer(model['conv3_3'], "pool3")
 
-        model['conv4_1'] = nn.conv_layer(self.var_dict, model['pool3'], feed_dict, "conv4_1")
-        model['conv4_2'] = nn.conv_layer(self.var_dict, model['conv4_1'], feed_dict, "conv4_2")
-        model['conv4_3'] = nn.conv_layer(self.var_dict, model['conv4_2'], feed_dict, "conv4_3")
+        model['conv4_1'] = nn.conv_layer(model['pool3'], feed_dict, "conv4_1", var_dict=var_dict)
+        model['conv4_2'] = nn.conv_layer(model['conv4_1'], feed_dict, "conv4_2", var_dict=var_dict)
+        model['conv4_3'] = nn.conv_layer(model['conv4_2'], feed_dict, "conv4_3", var_dict=var_dict)
         model['pool4'] = nn.max_pool_layer(model['conv4_3'], "pool4")
 
 
-        model['conv5_1'] = nn.conv_layer(self.var_dict, model['pool4'], feed_dict, "conv5_1")
-        model['conv5_2'] = nn.conv_layer(self.var_dict, model['conv5_1'], feed_dict, "conv5_2")
-        model['conv5_3'] = nn.conv_layer(self.var_dict, model['conv5_2'], feed_dict, "conv5_3")
+        model['conv5_1'] = nn.conv_layer(model['pool4'], feed_dict, "conv5_1", var_dict=var_dict)
+        model['conv5_2'] = nn.conv_layer(model['conv5_1'], feed_dict, "conv5_2", var_dict=var_dict)
+        model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3", var_dict=var_dict)
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
+        
+        # Vgg use the filter because the input image is fixed size: 224 * 224, but it might affect our training because our image size vary
+        vgg_f6_shape = [7, 7, 512, 4096]
+        vgg_f7_shape = [1, 1, 4096, 4096] # we can stick to this one
+        model['fconv6'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6", vgg_f6_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6'], feed_dict, "fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
 
-
-        model['fconv6'] = nn.fully_conv_layer(self.var_dict, model['pool5'], feed_dict, "fc6", [7, 7, 512, 4096], dropout=is_train, keep_prob=0.5)
-        model['fconv7'] = nn.fully_conv_layer(self.var_dict, model['fconv6'], feed_dict, "fc7", [1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5)
-
-        model['score_fr'] = nn.score_layer(self.var_dict, model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict)
+        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict, var_dict=var_dict)
+        
         return model
 
     def save_weights(self, sess=None, npy_path=None):
@@ -164,7 +173,8 @@ class FCN16VGG:
         return pred32s, pred16s, pred8s
 
     # train model with an accuracy of 32-stride
-    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias):
+    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias, save_var=False):
+
         '''
         Note Dtype:
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
@@ -175,7 +185,7 @@ class FCN16VGG:
         '''
 
         # Important: When training, random_init_fc8=True. When inference, random_init_fc8=False
-        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=True)
+        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=True, save_var=save_var)
 
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
