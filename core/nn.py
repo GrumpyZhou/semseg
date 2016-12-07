@@ -79,8 +79,8 @@ def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None,
                 print("score layer, weights: %s" % weight.get_shape())
                 print("score layer, bias: %s" % bias.get_shape())
 
-             if var_dict is not None:
-                var_dict[name] = (kernel,bias)
+                if var_dict is not None: 
+                    var_dict[name] = (kernel,bias)
 
         else:   # Don't use random kernel, use trained weights
             # name = 'fc8'  # the name used in VGG16-net

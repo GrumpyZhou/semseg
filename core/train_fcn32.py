@@ -97,4 +97,4 @@ with tf.Session() as sess:
 			sess.run(train_op, feed_dict)
 			print('Loss: ', sess.run(loss, feed_dict))
 	print('Finished training fcn32')
-	vgg_fcn32s.save_weights(sess=sess, npy_path=params['trained-weights'])
+	#vgg_fcn32s.save_weights(sess=sess, npy_path=params['trained-weights'])

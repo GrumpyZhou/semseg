@@ -28,14 +28,15 @@ class FCN16VGG:
         self.var_dict = {}
 
         # Init other necessary parameters
-def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False, save_var=False):
+    def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False, save_var=False):
         model = {}
         feed_dict = self.data_dict
+        
         if save_var:
             var_dict = self.var_dict
         else:
             var_dict = None
-
+            
         print('Save_var',save_var)
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
