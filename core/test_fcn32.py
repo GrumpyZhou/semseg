@@ -23,14 +23,12 @@ import data_utils as dt
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
-train_data_config = {'voc_dir':"data/VOCdevkit/VOC2012",
-          'dataset':'val',
-          'randomize': True,
-          'seed': None}
-params = {'num_classes': 22,
-        'load-weights': 'fcn32-semantic.npy',
-        # 'load-weights': 'vgg16.npy',
-        'trained-weights': None}
+train_data_config = {'voc_dir':"data/VOC2012",
+                     'dataset':'train',
+                     'randomize': True,
+                     'seed': None}
+params = {'num_classes': 22, 'rate': 1e-4,
+          'trained_weight_path':'data/vgg16.npy'}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 
@@ -42,17 +40,19 @@ test_img1 = skimage.io.imread("./data/test_img/person_bike.jpg")
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
-    vgg_fcn32 = FCN16VGG('data', params['load-weights'])
+    vgg_fcn32s = FCN16VGG(params['trained_weight_path'])
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    pred32 = vgg_fcn32.inference_fcn32(image, num_classes=params['num_classes'], random_init_fc8=False)
+    option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False} 
+    predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'], random_init_fc8=False, option=option)
 
     print('Finished building inference network-fcn32.')
     init = tf.initialize_all_variables()
     sess.run(init)
+    predict = {}
 
-    print('Running the inference_fcn32 ...')
+    print('Running the inference ...')
     for i in range(num_images):
         print("image ", i)
         # next_pair = train_dataset.next_batch()
@@ -63,8 +63,11 @@ with tf.Session() as sess:
         image_height_val, image_width_val = image_height.eval(), image_width.eval()
         feed_image = np.reshape(test_img1, (1, image_height_val, image_width_val,3))
         feed_dict = {image: feed_image}
-
-        preds = sess.run(pred32, feed_dict=feed_dict)
-
-        pred32_color = dt.color_image(preds[0], num_classes=22)
-        scp.misc.imsave('./data/test_img/person_bike_pred.png', pred32_color)
+        
+        predict = sess.run(predict_, feed_dict=feed_dict)
+        print( len(predict))
+        for key in option.keys():
+            if option[key]:
+                pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
+                scp.misc.imsave('./data/test_img/person_bike_%s.png'%key, pred_color)
+      
