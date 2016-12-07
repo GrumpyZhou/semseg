@@ -106,12 +106,10 @@ class VOCDataSet():
 
 
 
-def load_vgg16_weight(path, name):
+def load_vgg16_weight(path):
 
     # Initial network params
-    path = os.path.abspath(os.path.join(path, os.curdir))
-    fpath = os.path.join(path, name)
-
+    fpath = os.path.abspath(os.path.join(path, os.curdir))
     data_dict = np.load(fpath, encoding='latin1').item()
     print("Successfullt load vgg16 weight from %s."%fpath)
     return data_dict

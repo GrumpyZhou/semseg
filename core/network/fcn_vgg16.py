@@ -19,9 +19,9 @@ DATA_DIR = 'data'
 
 class FCN16VGG:
 
-    def __init__(self, data_dir=None, data_name=None):
+    def __init__(self, data_path=None):
         # Load VGG16 pretrained weight
-        data_dict = dt.load_vgg16_weight(data_dir, data_name)
+        data_dict = dt.load_vgg16_weight(data_path)
         self.data_dict = data_dict
 
         # used to save trained weights
