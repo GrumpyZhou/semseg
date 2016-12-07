@@ -33,14 +33,14 @@ def conv_layer(x, feed_dict, name, stride=1, var_dict=None):
 
     return conv_out
 
-def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_prob=0.5, random=False, var_dict=None):
+def fully_conv_layer(x, feed_dict, feed_name, name, shape, relu=True, dropout=False, keep_prob=0.5, var_dict=None):
     with tf.variable_scope(name) as scope:
+        kernel = get_fconv_weight(feed_dict, feed_name, shape)
+        bias = get_bias(feed_dict, feed_name, shape=[shape[3]])
         
-        kernel = get_fconv_weight(feed_dict, name, shape, random=random)
         conv = tf.nn.conv2d(x, kernel,
                             strides = [1, 1, 1, 1],
                             padding = 'SAME')
-        bias = get_bias(feed_dict, name, shape=[shape[3]], random=random)
         print("bias shape, fully conv %s: %s" % (name, bias.get_shape()))
         print("kernel shape, fully conv %s: %s" % (name, kernel.get_shape()))
         conv_out = tf.nn.bias_add(conv, bias)
@@ -52,53 +52,37 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
 
     if var_dict is not None:
         var_dict[name] = (kernel, bias)
-
     return conv_out
 
 
-def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None, var_dict=None):
-    '''
-    Note: use random=True only when training!
-    if random=False, load trained weights on this layer
-    '''
-    # Use random kernel for convolution to calculate the score
-    with tf.variable_scope(name) as scope:
-        if random:  # if use random kernel to calculate score
-            in_features = x.get_shape()[3].value
-            shape = [1, 1, in_features, num_classes]
-            with tf.variable_scope(name) as scope:
-                init_w = tf.truncated_normal_initializer(stddev=stddev)
-                weight = tf.get_variable(name='weight', shape=shape, initializer=init_w)
-                conv = tf.nn.conv2d(x, weight, [1, 1, 1, 1], padding='SAME')
+def score_layer(x, feed_dict, feed_name, name, num_classes, stddev=0.001, var_dict=None):
+    if feed_name is None:  # Use random kernel to calculate score
+        in_features = x.get_shape()[3].value
+        shape = [1, 1, in_features, num_classes]
+        with tf.variable_scope(name) as scope:
+            kernel = get_fconv_weight(feed_dict, feed_name, shape, stddev=stddev)
+            bias = get_bias(feed_dict, feed_name, shape=[shape[3]])
+            
+            conv = tf.nn.conv2d(x, kernel, [1, 1, 1, 1], padding='SAME')
+            score = tf.nn.bias_add(conv, bias)
+    
+            print("score layer, weights: %s" % kernel.get_shape())
+            print("score layer, bias: %s" % bias.get_shape())
 
-                init_b = tf.constant_initializer(0.0)
-                bias = tf.get_variable(name="bias", initializer=init_b, shape=[num_classes])
-                # save kernel var
-                score = tf.nn.bias_add(conv, bias)
-
-                print("score layer, weights: %s" % weight.get_shape())
-                print("score layer, bias: %s" % bias.get_shape())
-
-                if var_dict is not None: 
-                    var_dict[name] = (weight, bias)
-
-        else:   # Don't use random kernel, use trained weights
-            # name = 'fc8'  # the name used in VGG16-net
-            # we use the name = 'score_fr', trained by our network
-            if not feed_dict.has_key(name):
-                print("Weight dataset has no name: ", name)
-                print("Failed loading weights from score(fc8) layer!")
-
-                # TODO: load weights from VGG16-net
-                name = 'fc8'
-                shape = [1,1,4096, 1000]
-                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, random=random, var_dict=var_dict)
-
-            else:
-                shape = [1,1,4096, 22]
-                score = fully_conv_layer(x, feed_dict, name, shape, relu=False, random=random, var_dict=var_dict)
-
-
+            if var_dict is not None: 
+                var_dict[name] = (kernel, bias)
+                
+    else: # Load pretrained kernel from feed_dict
+        print("score layer,loading weights from feed_dict[%s]!"%feed_name)
+        if feed_name == 'score_fr':
+            shape = [1,1,4096, 22]
+        elif feed_name == 'fc8':
+            name = 'fc8'
+            shape = [1,1,4096, 1000]
+        else:
+            print('Score layer illegal shape!')
+        score = fully_conv_layer(x, feed_dict, feed_name=feed_name, name=name, shape=shape, relu=False, var_dict=var_dict)
+    
     return score
 
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
@@ -142,36 +126,26 @@ def get_conv_kernel(feed_dict, name):
     var = tf.get_variable(name="kernel", initializer=init, shape=shape)
     return var
 
-def get_bias(feed_dict, name, shape=None, random=False):
-    if not random:
-        if not feed_dict.has_key(name):
-            print("Feed_dict doesn't contain key:%s, initialize a random bias", name)
-            init = tf.constant_initializer(0.1, dtype=tf.float32)
-        else:
-            bias = feed_dict[name][1]
-            init = tf.constant_initializer(value=bias, dtype=tf.float32)        
-            shape = bias.shape
-            #print('Layer name: %s' % name)
-            #print('Layer bias shape: %s' % str(shape))
-    else:
+def get_bias(feed_dict, feed_name, shape=None):
+    if feed_name is None:
+        print("Initialize a random bias")
         init = tf.constant_initializer(0.1, dtype=tf.float32)
-        
+    else:
+        bias = feed_dict[feed_name][1]
+        init = tf.constant_initializer(value=bias, dtype=tf.float32)        
+        shape = bias.shape            
     var = tf.get_variable(name="bias", initializer=init, shape=shape)
     return var
 
-def get_fconv_weight(feed_dict, name, shape, num_class=None, random=False):
-    #print('Layer name: %s' % name)
-    #print('Layer shape: %s' % shape)
-    if not random:
-        if not feed_dict.has_key(name):
-            print("Feed_dict doesn't contain key:%s, initialize a random weight", name)
-            init = tf.truncated_normal_initializer(stddev=0.1, dtype=tf.float32)
-        weights = feed_dict[name][0]
+def get_fconv_weight(feed_dict, feed_name, shape, num_class=None, stddev=0.1):
+    if feed_name is None:
+        print("Initialize a random weight")
+        init = tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32)
+    else:
+        weights = feed_dict[feed_name][0]
         weights = weights.reshape(shape)
         init = tf.constant_initializer(value=weights,
                                     dtype=tf.float32)
-    else:
-        init = tf.truncated_normal_initializer(stddev=0.1, dtype=tf.float32)
     var = tf.get_variable(name="weight", initializer=init, shape=shape)
     return var
 

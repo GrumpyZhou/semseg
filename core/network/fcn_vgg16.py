@@ -63,17 +63,64 @@ class FCN16VGG:
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3", var_dict=var_dict)
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
-        # [7, 7, 512, 4096] Replace 7*7 conv kernel with 3 3*3 conv kernals   
-        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict, "fc6_1", [3, 3, 512, 512], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
-        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict, "fc6_2", [3, 3, 512, 512], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
-        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict, "fc6_3", [3, 3, 512, 4096], dropout=is_train, keep_prob=0.5, random=is_train, var_dict=var_dict)
-
-        vgg_f7_shape = [1, 1, 4096, 4096] # we can stick to this one
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, "fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
-        model['score_fr'] = nn.score_layer(model['fconv7'], "score_fr", num_classes, random=random_init_fc8, feed_dict=feed_dict, var_dict=var_dict)
+        '''
+        For fconv6_*, we use feed_names to specify the keys of weight and bias to load from feed_dict. 
+        If feed_name = None, weight and bias are randomly initialized.
+        '''
+        if is_train:   
+            # Load from vgg16 during training            
+            feeds_name = {'fc6_1':'conv5_1', 'fc6_2':'conv5_2', 'fc6_3':None}  
+            
+        else:                 
+            # Load from trained fcn32s during inference
+            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}                      
+    
         
-        return model
+        # [7, 7, 512, 4096] Replace 7*7 conv kernel with 3 3*3 conv kernals
+        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict, 
+                                                feed_name=feeds_name['fc6_1'], name="fc6_1", 
+                                                shape=[3, 3, 512, 512], 
+                                                dropout=is_train, keep_prob=0.5, 
+                                                var_dict=var_dict)
 
+        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict, 
+                                                feed_name=feeds_name['fc6_2'], name="fc6_2", 
+                                                shape=[3, 3, 512, 512], 
+                                                dropout=is_train, keep_prob=0.5, 
+                                                var_dict=var_dict)
+
+        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict, 
+                                                feed_name=feeds_name['fc6_3'], name="fc6_3", 
+                                                shape=[3, 3, 512, 4096], 
+                                                dropout=is_train, keep_prob=0.5, 
+                                                var_dict=var_dict)
+        
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, 
+                                                feed_name="fc7", name="fc7", 
+                                                shape=[1, 1, 4096, 4096], 
+                                                dropout=is_train, keep_prob=0.5, 
+                                                var_dict=var_dict)
+
+        # model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, feed_name="fc7", name="fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+
+        if random_init_fc8:
+            # Randomly init fc8
+            feed_name_score_fr = None                
+        elif feed_dict.has_key('score_fr'):  
+            # If we are using fcn32s trained weight
+            feed_name_score_fr = 'score_fr' 
+        else:                                
+            # If we are using vgg16 trained weight
+            feed_name_score_fr = 'fc8'
+            
+        model['score_fr'] = nn.score_layer(model['fconv7'], feed_dict, 
+                                           feed_name=feed_name_score_fr, 
+                                           name="score_fr", 
+                                           num_classes=num_classes, 
+                                           stddev=0.001, var_dict=var_dict) 
+        return model
+    
+    '''
     def save_weights(self, sess=None, npy_path=None):
         assert isinstance(sess, tf.Session)
         assert npy_path != None
@@ -92,8 +139,9 @@ class FCN16VGG:
 
         print("trained weights saved: ", npy_path)
         return npy_path
+    '''
 
-    def inference(self, image, num_classes, random_init_fc8=False,option={'fcn32s':True, 'fcn16s':True, 'fcn8s':False}):
+    def inference(self, image, num_classes, random_init_fc8=False,option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}):
         # Image preprocess: RGB -> BGR
         red, green, blue = tf.split(3, 3, image)
         image = tf.concat(3, [blue, green, red])
@@ -122,11 +170,12 @@ class FCN16VGG:
 
             # Fuse fc8 *2, pool4
             score_pool4 = nn.score_layer(model['pool4'],
-                                         "score_pool4",
-                                         num_classes,
-                                         random=True,
-                                         stddev=0.001,
-                                         feed_dict=self.data_dict)
+                                         feed_dict=self.data_dict,
+                                         feed_name=None,     # Random initialize
+                                         name='score_pool4',
+                                         num_classes=num_classes,
+                                         stddev=0.001)
+            
             fuse_pool4 = tf.add(upscore2_fr, score_pool4)
 
             # Upsample fusion *16
@@ -148,11 +197,12 @@ class FCN16VGG:
 
             # Fuse fc8 *4, pool4 *2, pool3
             score_pool3 = nn.score_layer(model['pool3'],
-                                         "score_pool3",
-                                         num_classes,
-                                         random=True,
-                                         stddev=0.001,
-                                         feed_dict=self.data_dict)
+                                         feed_dict=self.data_dict,
+                                         feed_name=None,     # Random initialize
+                                         name='score_pool3',
+                                         num_classes=num_classes,
+                                         stddev=0.001)
+
 
             fuse_pool3 = tf.add(score_pool3, upscore4_fr)
 
@@ -208,28 +258,4 @@ class FCN16VGG:
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         return train_step, loss
-
-    # use trained fcn32 model to inference
-    def inference_fcn32(self, image, num_classes, random_init_fc8=False):
-        '''
-        Use trained fcn32 weights to do inference
-        '''
-        # Image preprocess: RGB -> BGR
-        red, green, blue = tf.split(3, 3, image)
-        image = tf.concat(3, [blue, green, red])
-
-        # Basic model
-        model = self._build_model(image, num_classes, is_train=False, random_init_fc8=False)
-
-        # FCN-32s, return image size of [1, Height, Width, num_classes]
-        upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
-                                     "upscore32",
-                                     tf.shape(image),   # reshape to original input image size
-                                     num_classes,
-                                     ksize=64, stride=32)
-
-        # Prediction
-        pred32s = tf.argmax(upscore32, dimension=3)
-
-        return pred32s
-
+    
