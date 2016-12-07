@@ -49,11 +49,13 @@ with tf.Session() as sess:
 	sparse_values = tf.placeholder(tf.float32, shape=[None])
 	sparse_bias = tf.placeholder(tf.float32, shape=[None])
 	# create model and train op
-	[train_op, loss] = vgg_fcn32s.train_fcn32(params=params, image=batch, truth=label,
-										diag_indices = sparse_indices,
-										diag_values = sparse_values,
-										add_bias = sparse_bias)
-
+        [train_op, loss] = vgg_fcn32s.train_fcn32(params=params,
+                                                  image=batch,
+                                                  truth=label,
+						  diag_indices = sparse_indices,
+                                                  diag_values = sparse_values,
+                                                  add_bias = sparse_bias)
+        
 	print('Finished building network-fcn32.')
 	init = tf.initialize_all_variables()
 	sess.run(init)
@@ -62,13 +64,11 @@ with tf.Session() as sess:
 	for i in range(iterations):
 		print("iter: ", i)
 		for j in range(batch_size):
-			next_pair = train_dataset.next_batch()
-			image_height, image_width = tf.shape(next_pair[0])[1], tf.shape(next_pair[0])[2]
-			# convert to numpy integers
-			image_height_val, image_width_val = image_height.eval(), image_width.eval()
-			num_pixels = image_height_val * image_width_val
-
-			next_pair_image = next_pair[0]	# already numpy tuple
+			next_pair = train_dataset.next_batch()		
+                        next_pair_image = next_pair[0]
+                        
+                        image_shape = next_pair_image.shape
+                        num_pixels = image_shape[1] * image_shape[2]
 			next_pair_lable = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector in order to extract indices
 
 			# create values on the diagonal
@@ -88,11 +88,13 @@ with tf.Session() as sess:
 			# replace all elements with value 255 with 21 -> params['num_classes']-1.0
 			np.put(next_pair_lable, ii, [params['num_classes']-1.0])
 
-			feed_dict = {batch: next_pair_image, label: next_pair_lable,
-						sparse_indices: sparse_indices_feed,
-						sparse_values: sparse_values_feed,
-						sparse_bias: sparse_bias_feed}
+			feed_dict = {batch: next_pair_image,
+                                     label: next_pair_lable,
+				     sparse_indices: sparse_indices_feed,
+		       	             sparse_values: sparse_values_feed,
+		                     sparse_bias: sparse_bias_feed}
+                        
 			sess.run(train_op, feed_dict)
-			# print('Loss: ', loss)
+			print('Loss: ', sess.run(loss, feed_dict))
 	print('Finished training fcn32')
 	vgg_fcn32s.save_weights(sess=sess, npy_path=params['trained-weights'])
