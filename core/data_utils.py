@@ -103,9 +103,6 @@ class VOCDataSet():
 # data = dt.next_batch()
 # print(data[0].shape, data[1].shape)
 
-
-
-
 def load_vgg16_weight(path):
 
     # Initial network params

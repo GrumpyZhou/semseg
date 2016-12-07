@@ -29,7 +29,7 @@ def conv_layer(x, feed_dict, name, stride=1, var_dict=None):
         conv_out = tf.nn.relu(tf.nn.bias_add(conv, bias), name=scope.name)
 
     if var_dict is not None:
-        var_dict[name] = (kernel,bias)
+        var_dict[name] = (kernel, bias)
 
     return conv_out
 
@@ -51,7 +51,7 @@ def fully_conv_layer(x, feed_dict, name, shape, relu=True, dropout=False, keep_p
 
 
     if var_dict is not None:
-        var_dict[name] = (kernel,bias)
+        var_dict[name] = (kernel, bias)
 
     return conv_out
 
@@ -80,7 +80,7 @@ def score_layer(x, name, num_classes, random=True, stddev=0.001, feed_dict=None,
                 print("score layer, bias: %s" % bias.get_shape())
 
                 if var_dict is not None: 
-                    var_dict[name] = (kernel,bias)
+                    var_dict[name] = (weight, bias)
 
         else:   # Don't use random kernel, use trained weights
             # name = 'fc8'  # the name used in VGG16-net

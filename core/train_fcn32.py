@@ -29,8 +29,8 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'randomize': True,
                      'seed': None}
 params = {'num_classes': 22, 'rate': 1e-4,
-          'trained_weight_path':'data/vgg16.npy'}
-
+          'trained_weight_path':'data/vgg16.npy',
+          'save_trained_weight_path':'data/fcn32s.npy'}
 	
 train_dataset = dt.VOCDataSet(train_data_config)
 
@@ -52,10 +52,11 @@ with tf.Session() as sess:
         [train_op, loss] = vgg_fcn32s.train_fcn32(params=params,
                                                   image=batch,
                                                   truth=label,
-						  diag_indices = sparse_indices,
-                                                  diag_values = sparse_values,
-                                                  add_bias = sparse_bias)
-        
+						  diag_indices=sparse_indices,
+                                                  diag_values=sparse_values,
+                                                  add_bias=sparse_bias,
+                                                  save_var=True)
+        trained_var_dict = vgg_fcn32s.var_dict
 	print('Finished building network-fcn32.')
 	init = tf.initialize_all_variables()
 	sess.run(init)
@@ -87,7 +88,6 @@ with tf.Session() as sess:
 
 			# replace all elements with value 255 with 21 -> params['num_classes']-1.0
 			np.put(next_pair_lable, ii, [params['num_classes']-1.0])
-
 			feed_dict = {batch: next_pair_image,
                                      label: next_pair_lable,
 				     sparse_indices: sparse_indices_feed,
@@ -95,6 +95,18 @@ with tf.Session() as sess:
 		                     sparse_bias: sparse_bias_feed}
                         
 			sess.run(train_op, feed_dict)
+
 			print('Loss: ', sess.run(loss, feed_dict))
 	print('Finished training fcn32')
-	#vgg_fcn32s.save_weights(sess=sess, npy_path=params['trained-weights'])
+
+
+        # Save weight
+        npy_path = params['save_trained_weight_path']
+        weight_dict = sess.run(trained_var_dict)
+        if len(weight_dict.keys()) != 0:
+            for key in weight_dict.keys():
+                print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, weight_dict[key][0].shape, weight_dict[key][1].shape))
+                
+            np.save(npy_path, weight_dict)
+            print("trained weights saved: ", npy_path)
+            
