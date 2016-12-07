@@ -28,7 +28,7 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'randomize': True,
                      'seed': None}
 params = {'num_classes': 22, 'rate': 1e-4,
-          'trained_weight_path':'data/fcn32s.npy'}
+          'trained_weight_path':'data/fcn3_fconv.npy'}
 
 train_dataset = dt.VOCDataSet(train_data_config)
 
@@ -69,5 +69,5 @@ with tf.Session() as sess:
         for key in option.keys():
             if option[key]:
                 pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
-                scp.misc.imsave('./data/test_img/person_bike_%s.png'%key, pred_color)
+                scp.misc.imsave('./data/test_img/person_bike_%s_3conv_r_nr.png'%key, pred_color)
       

@@ -30,14 +30,14 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'seed': None}
 params = {'num_classes': 22, 'rate': 1e-4,
           'trained_weight_path':'data/vgg16.npy',
-          'save_trained_weight_path':'data/fcn32s.npy'}
+          'save_trained_weight_path':'data/fcn3_fconv.npy',
+          'predef_index':'2007_000129'} # None if not needed
 	
 train_dataset = dt.VOCDataSet(train_data_config)
 
 # Hyper-parameters
 batch_size = 2
-iterations = 2
-
+iterations = 10
 
 with tf.Session() as sess:
 	# Init CNN -> load pre-trained weights from VGG16.
@@ -55,6 +55,7 @@ with tf.Session() as sess:
 						  diag_indices=sparse_indices,
                                                   diag_values=sparse_values,
                                                   add_bias=sparse_bias,
+                                                  random_init_fc8=False,
                                                   save_var=True)
         trained_var_dict = vgg_fcn32s.var_dict
 	print('Finished building network-fcn32.')
@@ -65,7 +66,7 @@ with tf.Session() as sess:
 	for i in range(iterations):
 		print("iter: ", i)
 		for j in range(batch_size):
-			next_pair = train_dataset.next_batch()		
+			next_pair = train_dataset.next_batch(params['predef_index'])		                
                         next_pair_image = next_pair[0]
                         
                         image_shape = next_pair_image.shape
