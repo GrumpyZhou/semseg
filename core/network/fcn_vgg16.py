@@ -98,7 +98,7 @@ class FCN16VGG:
         image = tf.concat(3, [blue, green, red])
         
         # Basic model
-        model = self._build_model(image, num_classes, is_train=False, random_init_fc8=False)
+        model = self._build_model(image, num_classes, is_train=False, random_init_fc8=random_init_fc8)
         
         predict = {}
 
@@ -167,7 +167,7 @@ class FCN16VGG:
         return predict
  
     # train model with an accuracy of 32-stride
-    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias, save_var=False):
+    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias, random_init_fc8=True,save_var=False):
 
         '''
         Note Dtype:
@@ -179,7 +179,7 @@ class FCN16VGG:
         '''
 
         # Important: When training, random_init_fc8=True. When inference, random_init_fc8=False
-        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=True, save_var=save_var)
+        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=random_init_fc8, save_var=save_var)
 
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
