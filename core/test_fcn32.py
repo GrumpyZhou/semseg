@@ -37,7 +37,7 @@ params = {'num_classes': 22, 'rate': 1e-4,
           'trained_weight_path':'data/train_bird.npy'}
 
 val_dataset = dt.VOCDataSet(train_data_config)
-iterations = 5
+iterations = 3
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -66,7 +66,7 @@ with tf.Session() as sess:
         for key in option.keys():
             if option[key]:
                 pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
-                img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['class'],key,idx)
+                img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
                 scp.misc.imsave(img_fpath, pred_color)
                 print('Image saved: %s'%img_fpath)
       
