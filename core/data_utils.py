@@ -7,6 +7,48 @@ import os
 import sys
 import random
 import numpy as np
+import glob
+
+class CityDataSet():
+
+    def __init__(self, params):
+        self.city_dir = params['city_dir']
+        self.random = params.get('randomize',True)
+        self.seed = params.get('seed',None)
+
+        self.cities_train = ['aachen','bochum','bremen','cologne','darmstadt',
+                            'dusseldorf','erfurt','hamburg','hanover','jena',
+                            'krefeld','monchengladbach','strasbourg','stuttgart',
+                            'tubingen','ulm','weimar','zurich']
+        self.cities_val = ['frankfurt','lindau','munster']
+        
+        load_indicies()
+
+    def load_indicies(self):
+        datasets = ['train','val']
+        for ds in datasets:
+            # Load training images
+            search_img = os.path.join(self.city_dir,
+                                      'leftImg8bit_trainvaltest/leftImg8bit',
+                                      ds,'*','*_leftImg8bit.png')
+            files_img = glob.glob(search_img)
+            files_img.sort()
+            print('Training images:',files_img)
+            
+            # Load groudtruth images
+            search_lbl = os.path.join(self.city_dir,
+                                      'gtFine',
+                                      ds,'*','*_gtFine_labelTrainIds.png')
+            files_lbl = glob.glob(search_lbl)
+            files_lbl.sort()
+            print('Ground Truth images:',files_lbl)
+            
+
+#Testing example
+params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
+          'randomize': True,
+          'seed': None}
+dt = CityDataSet(params)
 
 
 class VOCDataSet():
