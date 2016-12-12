@@ -13,16 +13,22 @@ class CityDataSet():
 
     def __init__(self, params):
         self.city_dir = params['city_dir']
-        self.random = params.get('randomize',True)
-        self.seed = params.get('seed',None)
-
         self.cities_train = ['aachen','bochum','bremen','cologne','darmstadt',
                             'dusseldorf','erfurt','hamburg','hanover','jena',
                             'krefeld','monchengladbach','strasbourg','stuttgart',
                             'tubingen','ulm','weimar','zurich']
         self.cities_val = ['frankfurt','lindau','munster']
+        (self.img_indices, self.lbl_indices) = self.load_indicies()
 
-        self.load_indicies()
+        # Random params
+        self.idx = 0
+        self.random = params.get('randomize',True)
+        self.seed = params.get('seed',None)
+        
+        # Randomization: seed and pick
+        if self.random:
+            random.seed(self.seed)
+            self.idx = random.randint(0, len(self.img_indices)-1) # random init
 
     def load_indicies(self):
         datasets = ['train','val']
@@ -35,7 +41,6 @@ class CityDataSet():
                                       ds,'*','*_leftImg8bit.png')
             files_img += glob.glob(search_img)
             files_img.sort()
-            print('Training images:',len(files_img))
 
             # Load groudtruth images
             search_lbl = os.path.join(self.city_dir,
@@ -43,7 +48,75 @@ class CityDataSet():
                                       ds,'*','*_gtFine_labelTrainIds.png')
             files_lbl += glob.glob(search_lbl)
             files_lbl.sort()
-            print('Ground Truth images:',len(files_lbl))
+        
+        print('Training images:%d Ground Truth images:%d',len(files_img), len(files_lbl))
+        return (files_img, files_lbl)
+
+    def next_batch(self):
+        """
+        - Reshape image and label, extend 1st axis for batch dimension
+        - If 'predef_inx' is given, load sepecific image,
+          Otherwise load randomly selected(if self.random is set), or incrementally
+        - Return: (image, label)
+        """
+        # pick next input
+        if self.random:
+            self.idx = random.randint(0, len(self.img_indices)-1)
+        else:
+            self.idx += 1
+            if self.idx == len(self.img_indices):
+                self.idx = 0
+        img_fname = self.img_indices[self.idx]
+        lbl_fname = self.lbl_indices[self.idx]
+
+        print('Batch index: %d image:%s label:%s'%(idx, img_fname, lbl_fname)
+        image = self.load_image(img_fname)
+        image = image.reshape(1, *image.shape)
+        label = self.load_label(lbl_fname)
+        if label is not None:
+            label = label.reshape(1, *label.shape)
+
+        return (image,label)
+
+    def load_image(self, fname):
+        """
+        Load input image and preprocess for using pretrained weight from Caffee:
+        - cast to float
+        - switch channels RGB -> BGR
+        - subtract mean
+        - transpose to channel x height x width order
+        """
+        print('Loading img:%s'%fname)
+        try:
+            img = Image.open(fname)
+        except IOError as e:
+            print('Warning: no image with name %s!!'%fname)
+
+        image = np.array(img, dtype=np.float32)
+        image = image[:,:,::-1]     # RGB -> BGR
+        image -= self.mean
+        #image = image.transpose((2,0,1))
+        return image
+
+    def load_label(self, fname):
+        """
+        Load label image as 1 x height x width integer array of label indices.
+        The leading singleton dimension is required by the loss.
+        """
+        print('Loading lbl:%s'%fname)
+        try:
+            img = Image.open(fname)
+        except IOError as e:
+            print('Warning: no image with name %s!!'%fname)
+            label = None
+            return label
+
+        label = np.array(img, dtype=np.uint8)
+        label = label[np.newaxis, ...]
+
+        return label
+
+
 
 
 #Testing example
@@ -51,6 +124,9 @@ params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
           'randomize': True,
           'seed': None}
 dt = CityDataSet(params)
+(img,lbl)=dt.next_batch()
+print(img.shape,' ',lbl.shape)
+        
 
 
 class VOCDataSet():
