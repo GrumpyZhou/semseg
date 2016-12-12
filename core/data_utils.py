@@ -24,7 +24,7 @@ class CityDataSet():
         self.idx = 0
         self.random = params.get('randomize',True)
         self.seed = params.get('seed',None)
-        
+
         # Randomization: seed and pick
         if self.random:
             random.seed(self.seed)
@@ -48,7 +48,7 @@ class CityDataSet():
                                       ds,'*','*_gtFine_labelTrainIds.png')
             files_lbl += glob.glob(search_lbl)
             files_lbl.sort()
-        
+
         print('Training images:%d Ground Truth images:%d',len(files_img), len(files_lbl))
         return (files_img, files_lbl)
 
@@ -69,7 +69,7 @@ class CityDataSet():
         img_fname = self.img_indices[self.idx]
         lbl_fname = self.lbl_indices[self.idx]
 
-        print('Batch index: %d image:%s label:%s'%(idx, img_fname, lbl_fname)
+        print('Batch index: %d '%self.idx)
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
         label = self.load_label(lbl_fname)
@@ -86,7 +86,7 @@ class CityDataSet():
         - subtract mean
         - transpose to channel x height x width order
         """
-        print('Loading img:%s'%fname)
+        #print('Loading img:%s'%fname)
         try:
             img = Image.open(fname)
         except IOError as e:
@@ -94,7 +94,7 @@ class CityDataSet():
 
         image = np.array(img, dtype=np.float32)
         image = image[:,:,::-1]     # RGB -> BGR
-        image -= self.mean
+        #image -= self.mean
         #image = image.transpose((2,0,1))
         return image
 
@@ -103,7 +103,7 @@ class CityDataSet():
         Load label image as 1 x height x width integer array of label indices.
         The leading singleton dimension is required by the loss.
         """
-        print('Loading lbl:%s'%fname)
+        #print('Loading lbl:%s'%fname)
         try:
             img = Image.open(fname)
         except IOError as e:
@@ -126,7 +126,7 @@ params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
 dt = CityDataSet(params)
 (img,lbl)=dt.next_batch()
 print(img.shape,' ',lbl.shape)
-        
+
 
 
 class VOCDataSet():
