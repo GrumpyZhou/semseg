@@ -5,6 +5,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append("..")
+
+
 import skimage
 import skimage.io
 import skimage.transform
@@ -23,7 +27,7 @@ import data_utils as dt
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
-train_data_config = {'voc_dir':"data/VOC2012",
+train_data_config = {'voc_dir':"../data/VOC2012",
                      'dataset':'val',
                      'classes':['person'],# All classes are loaded if class is None
                      'filter_no_label':False,# Filter all indices with no ground truth,
@@ -34,7 +38,7 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'seed': None}
 
 params = {'num_classes': 22, 'rate': 1e-4,
-          'trained_weight_path':'data/train_bird.npy'}
+          'trained_weight_path':'../data/train_bird.npy'}
 
 val_dataset = dt.VOCDataSet(train_data_config)
 iterations = 3
@@ -66,7 +70,7 @@ with tf.Session() as sess:
         for key in option.keys():
             if option[key]:
                 pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
-                img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
+                img_fpath = '../data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
                 scp.misc.imsave(img_fpath, pred_color)
                 print('Image saved: %s'%img_fpath)
       

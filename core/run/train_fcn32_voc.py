@@ -6,6 +6,8 @@ used in the 2nd stage training -> vgg_fcn16s and so on and so forth.
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import sys
+sys.path.append("..")
 
 import skimage
 import skimage.io
@@ -26,7 +28,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
 # Change to Cityscape database
-train_data_config = {'voc_dir':"data/......",
+train_data_config = {'voc_dir':"../data/VOC2012",
                      'dataset':'train',
                      'classes':['person','cat','dog'],# All classes are loaded if class is None
                      'filter_no_label':True, # Filter all indices with no ground truth,
@@ -36,8 +38,8 @@ train_data_config = {'voc_dir':"data/......",
                      'seed': None}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'data/vgg16.npy',
-          'save_trained_weight_path':'data/......',		# specify later
+          'trained_weight_path':'../data/vgg16.npy',
+          'save_trained_weight_path':'../data',		# specify later
           'predef_index':None}              # None, if not needed
 
 # Change to Cityscape databse
