@@ -31,12 +31,12 @@ class FCN16VGG:
     def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False, save_var=False):
         model = {}
         feed_dict = self.data_dict
-        
+
         if save_var:
             var_dict = self.var_dict
         else:
             var_dict = None
-            
+
         print('Save_var',save_var)
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
@@ -64,62 +64,62 @@ class FCN16VGG:
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
         '''
-        For fconv6_*, we use feed_names to specify the keys of weight and bias to load from feed_dict. 
+        For fconv6_*, we use feed_names to specify the keys of weight and bias to load from feed_dict.
         If feed_name = None, weight and bias are randomly initialized.
         '''
-        if is_train:   
-            # Load from vgg16 during training            
-            feeds_name = {'fc6_1':'conv5_1', 'fc6_2':'conv5_2', 'fc6_3':None}  
-            
-        else:                 
+        if is_train:
+            # Load from vgg16 during training
+            feeds_name = {'fc6_1':'conv5_1', 'fc6_2':'conv5_2', 'fc6_3':None}
+
+        else:
             # Load from trained fcn32s during inference
-            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}                      
-    
-        
+            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}
+
+
         # [7, 7, 512, 4096] Replace 7*7 conv kernel with 3 3*3 conv kernals
-        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict, 
-                                                feed_name=feeds_name['fc6_1'], name="fc6_1", 
-                                                shape=[3, 3, 512, 512], 
-                                                dropout=is_train, keep_prob=0.5, 
+        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict,
+                                                feed_name=feeds_name['fc6_1'], name="fc6_1",
+                                                shape=[3, 3, 512, 512],
+                                                dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict, 
-                                                feed_name=feeds_name['fc6_2'], name="fc6_2", 
-                                                shape=[3, 3, 512, 512], 
-                                                dropout=is_train, keep_prob=0.5, 
+        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict,
+                                                feed_name=feeds_name['fc6_2'], name="fc6_2",
+                                                shape=[3, 3, 512, 512],
+                                                dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict, 
-                                                feed_name=feeds_name['fc6_3'], name="fc6_3", 
-                                                shape=[3, 3, 512, 4096], 
-                                                dropout=is_train, keep_prob=0.5, 
+        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict,
+                                                feed_name=feeds_name['fc6_3'], name="fc6_3",
+                                                shape=[3, 3, 512, 4096],
+                                                dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
-        
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, 
-                                                feed_name="fc7", name="fc7", 
-                                                shape=[1, 1, 4096, 4096], 
-                                                dropout=is_train, keep_prob=0.5, 
+
+        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict,
+                                                feed_name="fc7", name="fc7",
+                                                shape=[1, 1, 4096, 4096],
+                                                dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
         # model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, feed_name="fc7", name="fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
 
         if random_init_fc8:
             # Randomly init fc8
-            feed_name_score_fr = None                
-        elif feed_dict.has_key('score_fr'):  
+            feed_name_score_fr = None
+        elif feed_dict.has_key('score_fr'):
             # If we are using fcn32s trained weight
-            feed_name_score_fr = 'score_fr' 
-        else:                                
+            feed_name_score_fr = 'score_fr'
+        else:
             # If we are using vgg16 trained weight
             feed_name_score_fr = 'fc8'
-            
-        model['score_fr'] = nn.score_layer(model['fconv7'], feed_dict, 
-                                           feed_name=feed_name_score_fr, 
-                                           name="score_fr", 
-                                           num_classes=num_classes, 
-                                           stddev=0.001, var_dict=var_dict) 
+
+        model['score_fr'] = nn.score_layer(model['fconv7'], feed_dict,
+                                           feed_name=feed_name_score_fr,
+                                           name="score_fr",
+                                           num_classes=num_classes,
+                                           stddev=0.001, var_dict=var_dict)
         return model
-    
+
     '''
     def save_weights(self, sess=None, npy_path=None):
         assert isinstance(sess, tf.Session)
@@ -145,26 +145,26 @@ class FCN16VGG:
         # Image preprocess: RGB -> BGR
         red, green, blue = tf.split(3, 3, image)
         image = tf.concat(3, [blue, green, red])
-        
+
         # Basic model
         model = self._build_model(image, num_classes, is_train=False, random_init_fc8=random_init_fc8)
-        
+
         predict = {}
 
         # FCN-32s
         if option['fcn8s'] or option['fcn16s'] or option['fcn32s']:
-            upscore32 = nn.upscore_layer(model['score_fr'],     
+            upscore32 = nn.upscore_layer(model['score_fr'],
                                          "upscore32",
-                                         tf.shape(image), 
+                                         tf.shape(image),
                                          num_classes,
                                          ksize=64, stride=32)
             predict['fcn32s'] =  tf.argmax(upscore32, dimension=3)
 
         # FCN-16s
         if option['fcn8s'] or option['fcn16s']:
-            upscore2_fr = nn.upscore_layer(model['score_fr'],       
+            upscore2_fr = nn.upscore_layer(model['score_fr'],
                                            "upscore2_fr",
-                                           tf.shape(model['pool4']),  
+                                           tf.shape(model['pool4']),
                                            num_classes,
                                            ksize=4, stride=2)
 
@@ -175,13 +175,13 @@ class FCN16VGG:
                                          name='score_pool4',
                                          num_classes=num_classes,
                                          stddev=0.001)
-            
+
             fuse_pool4 = tf.add(upscore2_fr, score_pool4)
 
             # Upsample fusion *16
             upscore16 = nn.upscore_layer(fuse_pool4,
                                          "upscore16",
-                                         tf.shape(image),  
+                                         tf.shape(image),
                                          num_classes,
                                          ksize=32, stride=16)
             predict['fcn16s'] = tf.argmax(upscore16, dimension=3)
@@ -214,19 +214,16 @@ class FCN16VGG:
                                         ksize=16, stride=8)
 
             predict['fcn8s'] = tf.argmax(upscore8, dimension=3)
-    
+
         return predict
- 
+
     # train model with an accuracy of 32-stride
-    def train_fcn32(self, params, image, truth, diag_indices, diag_values, add_bias, random_init_fc8=True,save_var=False):
+    def train_fcn32(self, params, image, truth, random_init_fc8=True,save_var=False):
 
         '''
         Note Dtype:
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
         truth: reshaped image label, shape=[Height*Width], tf.int32, numpy ndarray
-        diag_indices: required by tf.SparseTensor(), shape=[Height*Width, 2], tf.int64, numpy ndarray
-        diag_values: required by tf.SparseTensor(), shape=[Height*Width], tf.float32, numpy ndarray
-        add_bias: {0,1} vector, shape = shape=[Height*Width], tf.float32, numpy ndarray
         '''
 
         # Important: When training, random_init_fc8=True. When inference, random_init_fc8=False
@@ -241,21 +238,10 @@ class FCN16VGG:
         old_shape = tf.shape(upscore32)
         new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
         prediction = tf.reshape(upscore32, new_shape)
-        num_pixels = tf.cast(new_shape[0], tf.int64)
+        # num_pixels = tf.cast(new_shape[0], tf.int64)
 
-        spare_diag_matrix = tf.SparseTensor(diag_indices, diag_values, [num_pixels, num_pixels])
-        pred_mul = tf.sparse_tensor_dense_matmul(spare_diag_matrix, prediction)
-
-        add_bias_ = tf.reshape(add_bias, [new_shape[0], 1]) # convert to column vector
-        last_col = tf.add(tf.slice(pred_mul, [0, params['num_classes']-1], [-1,1]), add_bias_)
-        # slice the first 21 columns
-        matrix_left = tf.slice(pred_mul, [0,0], [-1, params['num_classes']-1])
-        # concatenate the first 21 columns and the last column
-        # last_col_ = tf.reshape(last_col, [num_pixels, 1])
-        pred_final = tf.concat(1, [matrix_left, last_col])
-
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred_final, truth))
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         return train_step, loss
-    
+

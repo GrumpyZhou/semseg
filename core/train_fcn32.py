@@ -21,10 +21,12 @@ import tensorflow as tf
 from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
+# Don't use GPU. If use, comment this line
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
-train_data_config = {'voc_dir':"data/VOC2012",
+# Change to Cityscape database
+train_data_config = {'voc_dir':"data/......",
                      'dataset':'train',
                      'classes':['person','cat','dog'],# All classes are loaded if class is None
                      'filter_no_label':True, # Filter all indices with no ground truth,
@@ -33,32 +35,29 @@ train_data_config = {'voc_dir':"data/VOC2012",
                      'randomize': True,
                      'seed': None}
 
-params = {'num_classes': 22, 'rate': 1e-4,
+params = {'num_classes': 20, 'rate': 1e-4,
           'trained_weight_path':'data/vgg16.npy',
-          'save_trained_weight_path':'data/train_bird.npy',
+          'save_trained_weight_path':'data/......',		# specify later
           'predef_index':None}              # None, if not needed
-	
+
+# Change to Cityscape databse
 train_dataset = dt.VOCDataSet(train_data_config)
 
 # Hyper-parameters
-iterations = 10
+iterations = 5
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
     vgg_fcn32s = FCN16VGG(params['trained_weight_path'])
+
+    # Be aware of loaded data type....
     batch = tf.placeholder(tf.float32, shape=[1, None, None, 3])
     label = tf.placeholder(tf.int32, shape=[None])	# label is already vectorized before feed
 
-    sparse_indices = tf.placeholder(tf.int64, shape=[None,2])
-    sparse_values = tf.placeholder(tf.float32, shape=[None])
-    sparse_bias = tf.placeholder(tf.float32, shape=[None])
     # create model and train op
     [train_op, loss] = vgg_fcn32s.train_fcn32(params=params,
                                               image=batch,
                                               truth=label,
-                                              diag_indices=sparse_indices,
-                                              diag_values=sparse_values,
-                                              add_bias=sparse_bias,
                                               random_init_fc8=False,
                                               save_var=True)
     trained_var_dict = vgg_fcn32s.var_dict
@@ -69,35 +68,17 @@ with tf.Session() as sess:
     print('Start training fcn32...')
     for i in range(iterations):
         print("iter: ", i)
-        next_pair = train_dataset.next_batch(params['predef_index'])		                
+        # Load data, ......
+        next_pair = train_dataset.next_batch(params['predef_index'])
         next_pair_image = next_pair[0]
-        
+
         image_shape = next_pair_image.shape
         num_pixels = image_shape[1] * image_shape[2]
-        next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector in order to extract indices
+        next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector
 
-        # create values on the diagonal
-        ii = np.where(next_pair_label == 255)   # find all indices where element value is 255
-        sparse_values_feed = np.ones(num_pixels, dtype=np.float32)
-        np.put(sparse_values_feed, ii, [0.0])		# the values of sparse_values
-
-        single = np.arange(num_pixels, dtype=np.int64)
-        single_indices = np.reshape(single, (num_pixels,1))	# to column vector
-        # to double column vectors, requested by tensorflow sparse tensor creation
-        sparse_indices_feed = np.concatenate((single_indices, single_indices), axis=1)
-
-        # create the vector to be added to the last column
-        sparse_bias_feed = np.zeros(num_pixels, dtype=np.float32)
-        np.put(sparse_bias_feed, ii, [1.0])
-
-        # replace all elements with value 255 with 21 -> params['num_classes']-1.0
-        np.put(next_pair_label, ii, [params['num_classes']-1.0])
         feed_dict = {batch: next_pair_image,
-                     label: next_pair_label,
-                     sparse_indices: sparse_indices_feed,
-                     sparse_values: sparse_values_feed,
-                     sparse_bias: sparse_bias_feed}
-        
+                     label: next_pair_label,}
+
         sess.run(train_op, feed_dict)
 
         print('Loss: ', sess.run(loss, feed_dict))
@@ -110,7 +91,7 @@ with tf.Session() as sess:
     if len(weight_dict.keys()) != 0:
         for key in weight_dict.keys():
             print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, weight_dict[key][0].shape, weight_dict[key][1].shape))
-            
+
         np.save(npy_path, weight_dict)
         print("trained weights saved: ", npy_path)
-        
+
