@@ -21,28 +21,30 @@ class CityDataSet():
                             'krefeld','monchengladbach','strasbourg','stuttgart',
                             'tubingen','ulm','weimar','zurich']
         self.cities_val = ['frankfurt','lindau','munster']
-        
-        load_indicies()
+
+        self.load_indicies()
 
     def load_indicies(self):
         datasets = ['train','val']
+        files_img = []
+        files_lbl = []
         for ds in datasets:
             # Load training images
             search_img = os.path.join(self.city_dir,
                                       'leftImg8bit_trainvaltest/leftImg8bit',
                                       ds,'*','*_leftImg8bit.png')
-            files_img = glob.glob(search_img)
+            files_img += glob.glob(search_img)
             files_img.sort()
-            print('Training images:',files_img)
-            
+            print('Training images:',len(files_img))
+
             # Load groudtruth images
             search_lbl = os.path.join(self.city_dir,
                                       'gtFine',
                                       ds,'*','*_gtFine_labelTrainIds.png')
-            files_lbl = glob.glob(search_lbl)
+            files_lbl += glob.glob(search_lbl)
             files_lbl.sort()
-            print('Ground Truth images:',files_lbl)
-            
+            print('Ground Truth images:',len(files_lbl))
+
 
 #Testing example
 params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
@@ -59,14 +61,14 @@ class VOCDataSet():
         self.mean = np.array((104.007, 116.669, 122.679), dtype=np.float32)
         self.random = params.get('randomize', True)
         self.seed = params.get('seed', None)
-        
+
         # Predefined classes
         self.classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
                         'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
                         'diningtable', 'dog', 'horse', 'motorbike', 'person',
                         'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
 
-        self.indices = self.load_indices(params.get('dataset', 'train'), 
+        self.indices = self.load_indices(params.get('dataset', 'train'),
                                          params.get('classes', None),
                                          params.get('filter_no_label',False))
         self.idx = 0
@@ -82,7 +84,7 @@ class VOCDataSet():
     def next_batch(self, predef_inx=None):
         """
         - Reshape image and label, extend 1st axis for batch dimension
-        - If 'predef_inx' is given, load sepecific image, 
+        - If 'predef_inx' is given, load sepecific image,
           Otherwise load randomly selected(if self.random is set), or incrementally
         - Return: (image, label)
         """
@@ -97,18 +99,18 @@ class VOCDataSet():
             idx_str = self.indices[self.idx]
         else:
             idx_str = predef_inx
-            
+
         print('Batch index string: %s'% idx_str)
         image = self.load_image(idx_str)
-        image = image.reshape(1, *image.shape) 
+        image = image.reshape(1, *image.shape)
         label = self.load_label(idx_str)
         if label is not None:
             label = label.reshape(1, *label.shape)
-            
+
         return (image,label)
-   
+
     def load_indices(self, fold_type='train', classes_dict=None, filter_no_label=False):
-        """ 
+        """
         Load indices of images and labels as list
         - fold_type: train, val, trainval
         - class_name: predefined classes of the dataset
@@ -116,14 +118,14 @@ class VOCDataSet():
         """
         if filter_no_label or classes_dict is None:
             idx_dir = os.path.join(self.voc_dir,'ImageSets/Segmentation/trainval.txt')
-            with open(idx_dir, 'rb') as f: 
+            with open(idx_dir, 'rb') as f:
                 default_indices = f.read().splitlines()
-        
-        if classes_dict is None: 
+
+        if classes_dict is None:
             # Load from default segmentation dataset
             indices = default_indices
             print('Load indices from %s : %d' %(idx_dir,len(indices)))
-            
+
         else:
             indices = []
             for class_name in classes_dict:
@@ -133,18 +135,18 @@ class VOCDataSet():
                 else:
                     # Load specified class indices
                     idx_dir = os.path.join(self.voc_dir,'ImageSets/Main','%s_%s.txt'%(class_name,fold_type))
-                    with open(idx_dir, 'rb') as f: 
+                    with open(idx_dir, 'rb') as f:
                         indices_ = f.read().splitlines()
                         for i in range(len(indices_)):
                             idx= indices_[i]
                             indices_[i] = indices_[i].split(' ')[0]
-                
+
                     if filter_no_label:
                         #list(set(default_indices).intersection(indices)) work as well
                         indices_ = filter(lambda x:x in default_indices, indices_)
                     print('Load indices from %s : %d' %(idx_dir,len(indices_)))
                     indices += indices_
-                    
+
             print('total indices:%d'% len(indices))
 
         return indices
@@ -169,7 +171,7 @@ class VOCDataSet():
         Load label image as 1 x height x width integer array of label indices.
         The leading singleton dimension is required by the loss.
         """
-        
+
         try:
             img = Image.open('{}/SegmentationClass/{}.png'.format(self.voc_dir, idx))
         except IOError as e:
