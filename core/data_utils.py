@@ -180,12 +180,12 @@ class CityDataSet():
 
 
 #Testing example
-params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
-          'randomize': True,
-          'seed': None}
-dt = CityDataSet(params)
-(img,lbl)=dt.next_batch()
-print(img.shape,' ',lbl.shape)
+# params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
+#           'randomize': True,
+#           'seed': None}
+# dt = CityDataSet(params)
+# (img,lbl)=dt.next_batch()
+# print(img.shape,' ',lbl.shape)
 
 
 

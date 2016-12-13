@@ -19,6 +19,7 @@ import tensorflow as tf
 
 from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
+import glob
 
 # Don't use GPU. If use, comment this line
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
@@ -34,11 +35,9 @@ params = {'num_classes': 20, 'rate': 1e-4,
 val_dataset = dt.CityDataSet(train_data_config)
 
 # a simple test image, reshape to [1,H,W,3]
-test_img = Image.open('data/test_city/image0.png')
-test_img = np.array(test_img, dtype=np.float32)
-test_img = test_img[np.newaxis, ...]
+test_image_files = glob.glob('data/test_city/image*.png')
 
-iterations = 1
+iterations = 6
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -64,16 +63,21 @@ with tf.Session() as sess:
         # idx = val_dataset.indices[val_dataset.idx]
 
         # next_pair_image = next_pair[0]
+        test_file = test_image_files[i]
+        test_img = Image.open(test_file)
+        test_img = np.array(test_img, dtype=np.float32)
+        test_img = test_img[np.newaxis, ...]
+
         next_pair_image = test_img
         feed_dict = {image: next_pair_image}
 
         predict = sess.run(predict_, feed_dict=feed_dict)
-        img_fpath = 'data/test_city/colored0.png'
-        val_dataset.pred_to_color(img_fpath, predict)
-        # for key in option.keys():
-        #     if option[key]:
-        #         pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
-        #         img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
-        #         scp.misc.imsave(img_fpath, pred_color)
-        #         print('Image saved: %s'%img_fpath)
+        img_fpath = test_file.replace('image', 'colored')
+        for key in option.keys():
+            if option[key]:
+                val_dataset.pred_to_color(img_fpath, predict)
+                # pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
+                # img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
+                # scp.misc.imsave(img_fpath, pred_color)
+                # print('Image saved: %s'%img_fpath)
 
