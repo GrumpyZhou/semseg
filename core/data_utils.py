@@ -8,6 +8,11 @@ import sys
 import random
 import numpy as np
 import glob
+from collections import namedtuple
+from scipy.misc import imsave
+
+# define a data structure
+Label_City = namedtuple( 'Label' , ['name', 'trainId', 'color',] )
 
 class CityDataSet():
 
@@ -19,6 +24,31 @@ class CityDataSet():
                             'tubingen','ulm','weimar','zurich']
         self.cities_val = ['frankfurt','lindau','munster']
         (self.img_indices, self.lbl_indices) = self.load_indicies()
+
+        # Create mapping of (lable_name, id, color)
+        self.labels = [
+            Label_City(  'road'          ,   0, (128, 64,128) ),
+            Label_City(  'sidewalk'      ,   1, (244, 35,232) ),
+            Label_City(  'building'      ,   2, ( 70, 70, 70) ),
+            Label_City(  'wall'          ,   3, (102,102,156) ),
+            Label_City(  'fence'         ,   4, (190,153,153) ),
+            Label_City(  'pole'          ,   5, (153,153,153) ),
+            Label_City(  'traffic light' ,   6, (250,170, 30) ),
+            Label_City(  'traffic sign'  ,   7, (220,220,  0) ),
+            Label_City(  'vegetation'    ,   8, (107,142, 35) ),
+            Label_City(  'terrain'       ,   9, (152,251,152) ),
+            Label_City(  'sky'           ,  10, ( 70,130,180) ),
+            Label_City(  'person'        ,  11, (220, 20, 60) ),
+            Label_City(  'rider'         ,  12, (255,  0,  0) ),
+            Label_City(  'car'           ,  13, (  0,  0,142) ),
+            Label_City(  'truck'         ,  14, (  0,  0, 70) ),
+            Label_City(  'bus'           ,  15, (  0, 60,100) ),
+            Label_City(  'train'         ,  16, (  0, 80,100) ),
+            Label_City(  'motorcycle'    ,  17, (  0,  0,230) ),
+            Label_City(  'bicycle'       ,  18, (119, 11, 32) ),
+            Label_City(  'void'          ,  19, (  0,  0,  0) )
+        ]
+        self.trainId2Color = [label.color for label in self.labels]
 
         # Random params
         self.idx = 0
@@ -116,6 +146,36 @@ class CityDataSet():
 
         return label
 
+    def pred_to_color(self, save_path, pred):
+        '''
+        Input:  data_instance, should be an instance of CityDataSet.
+                pred: predicted matrix, must be [1, Height, Width, 1]
+        Return: colored .png image
+        '''
+        # Pad with RGB channels, producing [1, Height, Width, 4]
+        pred = np.lib.pad(pred, ((0,0),(0,0),(0,0),(0,3)), self.padding_func)
+        # Slice RGB channels
+        pred = pred[:,:,:,1:4]
+        H = pred.shape[1]
+        W = pred.shape[2]
+        pred = np.reshape(pred, (H,W,3) )
+
+        # write to .png file
+        imsave(save_path, pred)
+        print('colored prediction saved to %s '%save_path)
+
+        return pred
+
+
+    def padding_func(self, vector, iaxis_pad_width, iaxis, kwargs):
+        '''
+        Used by
+        '''
+        if iaxis == 3:
+            idx = vector[0]
+            values = self.trainId2Color[idx]
+            vector[-iaxis_pad_width[1]:] = values
+        return vector
 
 
 
@@ -280,11 +340,17 @@ def load_vgg16_weight(path):
     print("Successfullt load vgg16 weight from %s."%fpath)
     return data_dict
 
+
+# Deprecated because produced color truth image does not match the original
 def color_image(image, num_classes=22):
     import matplotlib as mpl
     norm = mpl.colors.Normalize(vmin=0., vmax=num_classes)
     mycm = mpl.cm.get_cmap('Set1')
     return mycm(norm(image))
+
+
+
+
 
 
 
