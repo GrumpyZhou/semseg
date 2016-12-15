@@ -21,8 +21,8 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 import glob
 
-# Don't use GPU. If use, comment this line
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+# Specify which GPU to use
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # Import training and validation dataset
 train_data_config = {'city_dir':"data/CityDatabase",
@@ -48,7 +48,7 @@ with tf.Session() as sess:
     option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'], random_init_fc8=False, option=option)
 
-    # predict = {}
+    predict = {}
     print('Finished building inference network-fcn32.')
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -75,7 +75,7 @@ with tf.Session() as sess:
         img_fpath = test_file.replace('image', 'colored')
         for key in option.keys():
             if option[key]:
-                val_dataset.pred_to_color(img_fpath, predict)
+                val_dataset.pred_to_color(img_fpath, predict[key])
                 # pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
                 # img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
                 # scp.misc.imsave(img_fpath, pred_color)

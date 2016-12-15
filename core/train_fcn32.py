@@ -21,8 +21,8 @@ import tensorflow as tf
 from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
-# Don't use GPU. If use, comment this line
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+# Specify which GPU to use
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # Import training and validation dataset
 # Change to Cityscape database
@@ -52,7 +52,7 @@ with tf.Session() as sess:
     [train_op, loss] = vgg_fcn32s.train_fcn32(params=params,
                                               image=batch,
                                               truth=label,
-                                              random_init_fc8=False,
+                                              random_init_fc8=True,
                                               save_var=True)
     trained_var_dict = vgg_fcn32s.var_dict
     print('Finished building network-fcn32.')
