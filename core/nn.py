@@ -37,7 +37,7 @@ def fully_conv_layer(x, feed_dict, feed_name, name, shape, relu=True, dropout=Fa
     with tf.variable_scope(name) as scope:
         kernel = get_fconv_weight(feed_dict, feed_name, shape)
         bias = get_bias(feed_dict, feed_name, shape=[shape[3]])
-        
+
         conv = tf.nn.conv2d(x, kernel,
                             strides = [1, 1, 1, 1],
                             padding = 'SAME')
@@ -62,27 +62,27 @@ def score_layer(x, feed_dict, feed_name, name, num_classes, stddev=0.001, var_di
         with tf.variable_scope(name) as scope:
             kernel = get_fconv_weight(feed_dict, feed_name, shape, stddev=stddev)
             bias = get_bias(feed_dict, feed_name, shape=[shape[3]])
-            
+
             conv = tf.nn.conv2d(x, kernel, [1, 1, 1, 1], padding='SAME')
             score = tf.nn.bias_add(conv, bias)
-    
+
             print("score layer, weights: %s" % kernel.get_shape())
             print("score layer, bias: %s" % bias.get_shape())
 
-            if var_dict is not None: 
+            if var_dict is not None:
                 var_dict[name] = (kernel, bias)
-                
+
     else: # Load pretrained kernel from feed_dict
         print("score layer,loading weights from feed_dict[%s]!"%feed_name)
         if feed_name == 'score_fr':
-            shape = [1,1,4096, 22]
+            shape = [1,1,4096, num_classes]
         elif feed_name == 'fc8':
             name = 'fc8'
             shape = [1,1,4096, 1000]
         else:
             print('Score layer illegal shape!')
         score = fully_conv_layer(x, feed_dict, feed_name=feed_name, name=name, shape=shape, relu=False, var_dict=var_dict)
-    
+
     return score
 
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
@@ -132,8 +132,8 @@ def get_bias(feed_dict, feed_name, shape=None):
         init = tf.constant_initializer(0.1, dtype=tf.float32)
     else:
         bias = feed_dict[feed_name][1]
-        init = tf.constant_initializer(value=bias, dtype=tf.float32)        
-        shape = bias.shape            
+        init = tf.constant_initializer(value=bias, dtype=tf.float32)
+        shape = bias.shape
     var = tf.get_variable(name="bias", initializer=init, shape=shape)
     return var
 
@@ -141,7 +141,7 @@ def get_fconv_weight(feed_dict, feed_name, shape, num_class=None, stddev=0.1):
     if feed_name is None:
         print("Initialize a random weight")
         #init = tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32)
-        init = tf.constant_initializer(value=0, dtype=tf.float32)        
+        init = tf.constant_initializer(value=0, dtype=tf.float32)
     else:
         weights = feed_dict[feed_name][0]
         weights = weights.reshape(shape)
