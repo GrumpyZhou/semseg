@@ -146,14 +146,15 @@ class CityDataSet():
 
         return label
 
-    def pred_to_color(self, save_path, pred):
+    def pred_to_color(self, save_path, pred_in):
         '''
         Input:  data_instance, should be an instance of CityDataSet.
-                pred: predicted matrix, must be [1, Height, Width, 1]
+                pred: predicted matrix, must be [1, Height, Width]
         Return: colored .png image
         '''
         # Pad with RGB channels, producing [1, Height, Width, 4]
-        pred = np.lib.pad(pred, ((0,0),(0,0),(0,0),(0,3)), self.padding_func)
+        pred_in = pred_in[..., np.newaxis]
+        pred = np.lib.pad(pred_in, ((0,0),(0,0),(0,0),(0,3)), self.padding_func)
         # Slice RGB channels
         pred = pred[:,:,:,1:4]
         H = pred.shape[1]
