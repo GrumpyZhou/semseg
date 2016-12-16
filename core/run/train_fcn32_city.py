@@ -41,7 +41,7 @@ params = {'num_classes': 20, 'rate': 1e-4,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-iterations = 5
+iterations = 5000
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.

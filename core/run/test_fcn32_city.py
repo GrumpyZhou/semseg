@@ -38,9 +38,9 @@ params = {'num_classes': 20, 'rate': 1e-4,
 val_dataset = dt.CityDataSet(train_data_config)
 
 # a simple test image, reshape to [1,H,W,3]
-test_image_files = glob.glob('../data/test_city/image*.png')
+test_image_files = glob.glob('../data/test_train/image*.png')
 
-iterations = 6
+iterations = 1
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -48,7 +48,7 @@ with tf.Session() as sess:
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}
+    option={'fcn32s':True, 'fcn16s':True, 'fcn8s':True}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'], random_init_fc8=False, option=option)
 
     predict = {}
@@ -75,9 +75,10 @@ with tf.Session() as sess:
         feed_dict = {image: next_pair_image}
 
         predict = sess.run(predict_, feed_dict=feed_dict)
-        img_fpath = test_file.replace('image', 'colored')
+        #img_fpath = test_file.replace('image', 'colored')
         for key in option.keys():
             if option[key]:
+		img_fpath = test_file.replace('image', 'colored' + key)
                 val_dataset.pred_to_color(img_fpath, predict[key])
                 # pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
                 # img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)

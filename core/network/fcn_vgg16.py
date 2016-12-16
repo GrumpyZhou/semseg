@@ -69,7 +69,7 @@ class FCN16VGG:
         '''
         if is_train:
             # Load from vgg16 during training
-            feeds_name = {'fc6_1':'conv5_1', 'fc6_2':'conv5_2', 'fc6_3':None}
+            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}
 
         else:
             # Load from trained fcn32s during inference
@@ -257,7 +257,7 @@ class FCN16VGG:
         upscore2_fr = nn.upscore_layer(model['score_fr'],
                                            "upscore2_fr",
                                            tf.shape(model['pool4']),
-                                           num_classes,
+                                           params['num_classes'],
                                            ksize=4, stride=2)
 
         # Fuse fc8 *2, pool4, random to 0, train this, save trained weights
@@ -265,7 +265,7 @@ class FCN16VGG:
                                          feed_dict=self.data_dict,
                                          feed_name=None,     # Random initialize
                                          name='score_pool4',
-                                         num_classes=num_classes,
+                                         num_classes=params['num_classes'],
                                          stddev=0.001)
         # just simple adding.
         fuse_pool4 = tf.add(upscore2_fr, score_pool4)
@@ -274,7 +274,7 @@ class FCN16VGG:
         upscore16 = nn.upscore_layer(fuse_pool4,
                                          "upscore16",
                                          tf.shape(image),
-                                         num_classes,
+                                         params['num_classes'],
                                          ksize=32, stride=16)
 
         old_shape = tf.shape(upscore16)

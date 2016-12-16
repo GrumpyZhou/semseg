@@ -140,8 +140,8 @@ def get_bias(feed_dict, feed_name, shape=None):
 def get_fconv_weight(feed_dict, feed_name, shape, num_class=None, stddev=0.1):
     if feed_name is None:
         print("Initialize a random weight")
-        #init = tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32)
-        init = tf.constant_initializer(value=0, dtype=tf.float32)
+        init = tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32)
+        #init = tf.constant_initializer(value=0, dtype=tf.float32)
     else:
         weights = feed_dict[feed_name][0]
         weights = weights.reshape(shape)
