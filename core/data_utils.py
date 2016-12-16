@@ -67,7 +67,7 @@ class CityDataSet():
         for ds in datasets:
             # Load training images
             search_img = os.path.join(self.city_dir,
-                                      'leftImg8bit_trainvaltest/leftImg8bit',
+                                      'leftImg8bit',
                                       ds,'*','*_leftImg8bit.png')
             files_img += glob.glob(search_img)
             files_img.sort()
