@@ -245,3 +245,45 @@ class FCN16VGG:
 
         return train_step, loss
 
+    def train_fcn16(self, params, image, truth, random_init_fc8=True,save_var=False):
+        '''
+        Note Dtype:
+        image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
+        truth: reshaped image label, shape=[Height*Width], tf.int32, numpy ndarray
+        '''
+
+        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=random_init_fc8, save_var=save_var)
+        # upsample the last layer, train this, but don't save trained weights.
+        upscore2_fr = nn.upscore_layer(model['score_fr'],
+                                           "upscore2_fr",
+                                           tf.shape(model['pool4']),
+                                           num_classes,
+                                           ksize=4, stride=2)
+
+        # Fuse fc8 *2, pool4, random to 0, train this, save trained weights
+        score_pool4 = nn.score_layer(model['pool4'],
+                                         feed_dict=self.data_dict,
+                                         feed_name=None,     # Random initialize
+                                         name='score_pool4',
+                                         num_classes=num_classes,
+                                         stddev=0.001)
+        # just simple adding.
+        fuse_pool4 = tf.add(upscore2_fr, score_pool4)
+
+        # Upsample fusion *16, the final upsampling, train this, but don't save trained weights.
+        upscore16 = nn.upscore_layer(fuse_pool4,
+                                         "upscore16",
+                                         tf.shape(image),
+                                         num_classes,
+                                         ksize=32, stride=16)
+
+        old_shape = tf.shape(upscore16)
+        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
+        prediction = tf.reshape(upscore16, new_shape)
+        # num_pixels = tf.cast(new_shape[0], tf.int64)
+
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
+        train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
+
+        return train_step, loss
+
