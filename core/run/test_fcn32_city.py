@@ -28,18 +28,18 @@ import glob
 os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
-train_data_config = {'city_dir':"../data/CityDatabase",
-                     'randomize': True,
-                     'seed': None}
+test_data_config = {'city_dir':"../data/CityDatabase",
+                     'randomize': False,
+                     'seed': None,
+                     'dataset':'test',
+                     'pred_save_path':'../data/test_city'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn16_skip.npy'}
+          'trained_weight_path':'../data/city_fcn16_skip.npy',
+          'pred_type_prefix':'_skip_'} # When saving predicting result, the prefix is 
+                                 # concatenated into the file name
 
-val_dataset = dt.CityDataSet(train_data_config)
-
-# a simple test image, reshape to [1,H,W,3]
-test_image_files = glob.glob('../data/test_city/image*.png')
-
+test_dataset = dt.CityDataSet(test_data_config)
 iterations = 6
 
 with tf.Session() as sess:
@@ -59,29 +59,14 @@ with tf.Session() as sess:
     print('Running the inference ...')
     for i in range(iterations):
         print("iter:", i)
-        # IMPORTANT: if use next_batch() to fetch image, then image already in BGR order,
-        # inference will convert again, and makes it RGB!
-        # if use a single test image, then image is in RGB -> Ok!
-        # next_pair = val_dataset.next_batch()
-        # idx = val_dataset.indices[val_dataset.idx]
-
-        # next_pair_image = next_pair[0]
-        test_file = test_image_files[i]
-        test_img = Image.open(test_file)
-        test_img = np.array(test_img, dtype=np.float32)
-        test_img = test_img[np.newaxis, ...]
-
-        next_pair_image = test_img
+        # Load data, Already converted to BGR
+        next_pair = test_dataset.next_batch()
+        next_pair_image = next_pair[0]
         feed_dict = {image: next_pair_image}
 
         predict = sess.run(predict_, feed_dict=feed_dict)
-        #img_fpath = test_file.replace('image', 'colored')
         for key in option.keys():
             if option[key]:
-		img_fpath = test_file.replace('image', 'colored_16s_')
-                val_dataset.pred_to_color(img_fpath, predict[key])
-                # pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
-                # img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
-                # scp.misc.imsave(img_fpath, pred_color)
-                # print('Image saved: %s'%img_fpath)
-
+                fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ the index will be added in pred_to_color()
+                test_dataset.pred_to_color(fname_prefix, predict[key])
+               
