@@ -25,7 +25,7 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
 # Import training and validation dataset
 # Change to Cityscape database

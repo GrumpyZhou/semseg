@@ -25,7 +25,7 @@ import data_utils as dt
 import glob
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -33,14 +33,14 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'seed': None}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn32.npy'}
+          'trained_weight_path':'../data/city_fcn16_skip.npy'}
 
 val_dataset = dt.CityDataSet(train_data_config)
 
 # a simple test image, reshape to [1,H,W,3]
-test_image_files = glob.glob('../data/test_train/image*.png')
+test_image_files = glob.glob('../data/test_city/image*.png')
 
-iterations = 1
+iterations = 6
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -48,11 +48,11 @@ with tf.Session() as sess:
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    option={'fcn32s':True, 'fcn16s':True, 'fcn8s':True}
+    option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'], random_init_fc8=False, option=option)
 
     predict = {}
-    print('Finished building inference network-fcn32.')
+    print('Finished building inference network-fcn16.')
     init = tf.initialize_all_variables()
     sess.run(init)
 
@@ -78,7 +78,7 @@ with tf.Session() as sess:
         #img_fpath = test_file.replace('image', 'colored')
         for key in option.keys():
             if option[key]:
-		img_fpath = test_file.replace('image', 'colored' + key)
+		img_fpath = test_file.replace('image', 'colored_16s_')
                 val_dataset.pred_to_color(img_fpath, predict[key])
                 # pred_color = dt.color_image(predict[key][0], num_classes=params['num_classes'])
                 # img_fpath = './data/test_img/%s_%s_%s.png'%(train_data_config['classes'][0],key,idx)
