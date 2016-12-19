@@ -31,7 +31,8 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': True,
-                     'seed': None}
+                     'seed': None,
+                     'dataset': 'train'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
           'trained_weight_path':'../data/city_fcn32.npy',
