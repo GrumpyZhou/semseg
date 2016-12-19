@@ -9,12 +9,12 @@ import numpy as np
 from dataset.VOCDataSet import VOCDataSet
 from dataset.CityDataSet import CityDataSet
 
-def load_vgg16_weight(path):
+def load_weight(path):
 
     # Initial network params
     fpath = os.path.abspath(os.path.join(path, os.curdir))
     data_dict = np.load(fpath, encoding='latin1').item()
-    print("Successfullt load vgg16 weight from %s."%fpath)
+    print("Successfully load weight file from %s."%fpath)
     return data_dict
 
 
