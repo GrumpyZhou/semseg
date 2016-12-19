@@ -79,6 +79,9 @@ def score_layer(x, feed_dict, feed_name, name, num_classes, stddev=0.001, var_di
         elif feed_name == 'fc8':
             name = 'fc8'
             shape = [1,1,4096, 1000]
+	elif feed_name == 'score_pool4':
+	    in_features = x.get_shape()[3].value
+	    shape = [1,1,in_features,num_classes]
         else:
             print('Score layer illegal shape!')
         score = fully_conv_layer(x, feed_dict, feed_name=feed_name, name=name, shape=shape, relu=False, var_dict=var_dict)

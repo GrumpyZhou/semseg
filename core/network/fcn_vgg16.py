@@ -171,7 +171,7 @@ class FCN16VGG:
             # Fuse fc8 *2, pool4
             score_pool4 = nn.score_layer(model['pool4'],
                                          feed_dict=self.data_dict,
-                                         feed_name=None,     # Random initialize
+                                         feed_name='score_pool4',     # Use trained pool4 score weights
                                          name='score_pool4',
                                          num_classes=num_classes,
                                          stddev=0.001)
@@ -266,7 +266,8 @@ class FCN16VGG:
                                          feed_name=None,     # Random initialize
                                          name='score_pool4',
                                          num_classes=params['num_classes'],
-                                         stddev=0.001)
+                                         stddev=0.001,
+					 var_dict=self.var_dict)
         # just simple adding.
         fuse_pool4 = tf.add(upscore2_fr, score_pool4)
 
