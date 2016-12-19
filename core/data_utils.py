@@ -14,17 +14,17 @@ from scipy.misc import imsave
 # define a data structure
 Label_City = namedtuple( 'Label' , ['name', 'trainId', 'color',] )
 
+
 class CityDataSet():
 
     def __init__(self, params):
-        self.city_dir = params['city_dir']
-        self.cities_train = ['aachen','bochum','bremen','cologne','darmstadt',
-                            'dusseldorf','erfurt','hamburg','hanover','jena',
-                            'krefeld','monchengladbach','strasbourg','stuttgart',
-                            'tubingen','ulm','weimar','zurich']
-        self.cities_val = ['frankfurt','lindau','munster']
+        ''' type: 'train', 'val', 'test' '''
+        self.dataset_type = params.get('dataset','train')        
+        self.city_dir = params.get('city_dir','../data/CityDatabase')
+        
+        # Load dataset indices
         (self.img_indices, self.lbl_indices) = self.load_indicies()
-
+       
         # Create mapping of (lable_name, id, color)
         self.labels = [
             Label_City(  'road'          ,   0, (128, 64,128) ),
@@ -50,7 +50,7 @@ class CityDataSet():
         ]
         self.trainId2Color = [label.color for label in self.labels]
 
-        # Random params
+        # Randomization for training
         self.idx = 0
         self.random = params.get('randomize',True)
         self.seed = params.get('seed',None)
@@ -60,26 +60,28 @@ class CityDataSet():
             random.seed(self.seed)
             self.idx = random.randint(0, len(self.img_indices)-1) # random init
 
-    def load_indicies(self):
-        datasets = ['train','val']
+    def load_indicies(self,):
+        print('Load %s dataset'%self.dataset_type)
         files_img = []
         files_lbl = []
-        for ds in datasets:
-            # Load training images
-            search_img = os.path.join(self.city_dir,
-                                      'leftImg8bit',
-                                      ds,'*','*_leftImg8bit.png')
-            files_img += glob.glob(search_img)
-            files_img.sort()
+        
+        # Load training images
+        search_img = os.path.join(self.city_dir,
+                                  'leftImg8bit',
+                                  self.dataset_type,'*','*_leftImg8bit.png')
+        files_img = glob.glob(search_img)
+        files_img.sort()
 
+        if self.dataset_type != 'test':
             # Load groudtruth images
             search_lbl = os.path.join(self.city_dir,
                                       'gtFine',
-                                      ds,'*','*_gtFine_labelTrainIds.png')
-            files_lbl += glob.glob(search_lbl)
+                                      self.dataset_type,
+                                      '*','*_gtFine_labelTrainIds.png')
+            files_lbl = glob.glob(search_lbl)
             files_lbl.sort()
 
-        print('Training images:%d Ground Truth images:%d',len(files_img), len(files_lbl))
+        print('Training images:%d Ground Truth images:%d',(len(files_img), len(files_lbl)))
         return (files_img, files_lbl)
 
     def next_batch(self):
@@ -96,14 +98,16 @@ class CityDataSet():
             self.idx += 1
             if self.idx == len(self.img_indices):
                 self.idx = 0
+        print('Batch index: %d '%self.idx)        
         img_fname = self.img_indices[self.idx]
-        lbl_fname = self.lbl_indices[self.idx]
-
-        print('Batch index: %d '%self.idx)
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
-        label = self.load_label(lbl_fname)
-        if label is not None:
+
+        if self.dataset_type == 'test':
+            return (image, None)
+        else:
+            lbl_fname = self.lbl_indices[self.idx]
+            label = self.load_label(lbl_fname)
             label = label.reshape(1, *label.shape)
 
         return (image,label)
@@ -179,14 +183,17 @@ class CityDataSet():
         return vector
 
 
+# Test example
+data_config = {'city_dir':"./data/CityDatabase",
+                     'randomize': True,
+                     'seed': None,
+                     'dataset': 'test'}
+dt = CityDataSet(data_config)
+(img,lbl)=dt.next_batch()
+print(img.shape,' ',lbl==None)
 
-#Testing example
-# params = {'city_dir':"/Users/WY/Downloads/CityDatabase",
-#           'randomize': True,
-#           'seed': None}
-# dt = CityDataSet(params)
-# (img,lbl)=dt.next_batch()
-# print(img.shape,' ',lbl.shape)
+
+
 
 
 
