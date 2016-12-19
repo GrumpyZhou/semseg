@@ -19,8 +19,9 @@ class CityDataSet():
 
     def __init__(self, params):
         ''' type: 'train', 'val', 'test' '''
-        self.dataset_type = params.get('dataset','train')        
+        self.dataset_type = params.get('dataset','train')     
         self.city_dir = params.get('city_dir','../data/CityDatabase')
+        self.pred_save_path = params.get('pred_save_path','../data/test_city')
         
         # Load dataset indices
         (self.img_indices, self.lbl_indices) = self.load_indicies()
@@ -98,8 +99,8 @@ class CityDataSet():
             self.idx += 1
             if self.idx == len(self.img_indices):
                 self.idx = 0
-        print('Batch index: %d '%self.idx)        
         img_fname = self.img_indices[self.idx]
+        print('Batch index: %d'%self.idx)        
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
 
@@ -150,7 +151,7 @@ class CityDataSet():
 
         return label
 
-    def pred_to_color(self, save_path, pred_in):
+    def pred_to_color(self, fname_prefix, pred_in):
         '''
         Input:  data_instance, should be an instance of CityDataSet.
                 pred: predicted matrix, must be [1, Height, Width]
@@ -166,8 +167,11 @@ class CityDataSet():
         pred = np.reshape(pred, (H,W,3) )
 
         # write to .png file
+        img_inx = self.img_indices[self.idx].split('_')
+        fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
+        save_path = os.path.join(self.pred_save_path,fname)
         imsave(save_path, pred)
-        print('colored prediction saved to %s '%save_path)
+        print('Colored prediction saved to %s '%save_path)
 
         return pred
 
@@ -184,6 +188,7 @@ class CityDataSet():
 
 
 # Test example
+'''
 data_config = {'city_dir':"./data/CityDatabase",
                      'randomize': True,
                      'seed': None,
@@ -191,7 +196,7 @@ data_config = {'city_dir':"./data/CityDatabase",
 dt = CityDataSet(data_config)
 (img,lbl)=dt.next_batch()
 print(img.shape,' ',lbl==None)
-
+'''
 
 
 
