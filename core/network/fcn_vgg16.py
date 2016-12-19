@@ -143,8 +143,8 @@ class FCN16VGG:
 
     def inference(self, image, num_classes, random_init_fc8=False,option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}):
         # Image preprocess: RGB -> BGR
-        red, green, blue = tf.split(3, 3, image)
-        image = tf.concat(3, [blue, green, red])
+        # red, green, blue = tf.split(3, 3, image)
+        # image = tf.concat(3, [blue, green, red])
 
         # Basic model
         model = self._build_model(image, num_classes, is_train=False, random_init_fc8=random_init_fc8)
