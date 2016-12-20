@@ -33,8 +33,7 @@ def vgg16_weight_transform(vgg16_path, vgg16_new_path):
 
     # Add conv6 layers using weight of conv5 layers
     dict_to_add = {'conv6_1': data_dict['conv5_1'],
-                   'conv6_2': data_dict['conv5_2'],  
-                   'conv6_3': data_dict['conv5_3']}
+                   'conv6_2': data_dict['conv5_2']}
     data_dict.update(dict_to_add)
 
     # Save result
@@ -51,7 +50,7 @@ def color_image(image, num_classes=22):
 
 '''
 #Testing voc dataset
-params = {'voc_dir':"../data/VOC2012",
+params = {'voc_dir':"./data/VOC2012",
           'dataset':'train',
           'classes':['person','cat','dog'], # All classes are loaded if class is None
           'filter_no_label':True,         # Filter all indices with no ground truth, default is False
@@ -71,3 +70,8 @@ dt = CityDataSet(data_config)
 (img,lbl)=dt.next_batch()
 print(img.shape,' ',lbl==None)
 '''
+
+
+'''vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')'''
+
+
