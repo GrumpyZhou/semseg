@@ -20,15 +20,14 @@ DATA_DIR = 'data'
 class FCN16VGG:
 
     def __init__(self, data_path=None):
-        # Load VGG16 pretrained weight
+        # Load pretrained weight
         data_dict = dt.load_weight(data_path)
         self.data_dict = data_dict
 
         # used to save trained weights
         self.var_dict = {}
 
-        # Init other necessary parameters
-    def _build_model(self, image, num_classes, is_train=False, random_init_fc8=False, save_var=False):
+    def _build_model(self, image, num_classes, is_train=False, save_var=False):
         model = {}
         feed_dict = self.data_dict
 
@@ -36,8 +35,6 @@ class FCN16VGG:
             var_dict = self.var_dict
         else:
             var_dict = None
-
-        print('Save_var',save_var)
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2", var_dict=var_dict)
@@ -63,45 +60,38 @@ class FCN16VGG:
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3", var_dict=var_dict)
         model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
 
+        model['conv6_1'] = nn.conv_layer(model['pool5'], feed_dict, "conv6_1", shape=[3, 3, 512, 512], dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+        model['conv6_2'] = nn.conv_layer(model['conv6_1'], feed_dict, "conv6_2", shape=[3, 3, 512, 512], dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+        model['conv6_3'] = nn.conv_layer(model['conv6_2'], feed_dict, "conv6_3", shape=[3, 3, 512, 4096], dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+        model['conv7'] = nn.conv_layer(model['conv6_3'], feed_dict, "conv7", shape=[1, 1, 4096, 4096], dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+
         '''
-        For fconv6_*, we use feed_names to specify the keys of weight and bias to load from feed_dict.
-        If feed_name = None, weight and bias are randomly initialized.
-        '''
-        if is_train:
-            # Load from vgg16 during training
-            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}
-
-        else:
-            # Load from trained fcn32s during inference
-            feeds_name = {'fc6_1':'fc6_1', 'fc6_2':'fc6_2', 'fc6_3':'fc6_3'}
-
-
         # [7, 7, 512, 4096] Replace 7*7 conv kernel with 3 3*3 conv kernals
-        model['fconv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict,
-                                                feed_name=feeds_name['fc6_1'], name="fc6_1",
+        model['conv6_1'] = nn.fully_conv_layer(model['pool5'], feed_dict,
+                                                feed_name='conv6_1', name="conv6_1",
                                                 shape=[3, 3, 512, 512],
                                                 dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        model['fconv6_2'] = nn.fully_conv_layer(model['fconv6_1'], feed_dict,
-                                                feed_name=feeds_name['fc6_2'], name="fc6_2",
+        model['conv6_2'] = nn.fully_conv_layer(model['conv6_1'], feed_dict,
+                                                feed_name='conv6_2', name="conv6_2",
                                                 shape=[3, 3, 512, 512],
                                                 dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        model['fconv6_3'] = nn.fully_conv_layer(model['fconv6_2'], feed_dict,
-                                                feed_name=feeds_name['fc6_3'], name="fc6_3",
+        model['conv6_3'] = nn.fully_conv_layer(model['conv6_2'], feed_dict,
+                                                feed_name='conv6_3', name="conv6_3",
                                                 shape=[3, 3, 512, 4096],
                                                 dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict,
-                                                feed_name="fc7", name="fc7",
+        model['conv7'] = nn.fully_conv_layer(model['conv6_3'], feed_dict,
+                                                feed_name="conv7", name="conv7",
                                                 shape=[1, 1, 4096, 4096],
                                                 dropout=is_train, keep_prob=0.5,
                                                 var_dict=var_dict)
 
-        # model['fconv7'] = nn.fully_conv_layer(model['fconv6_3'], feed_dict, feed_name="fc7", name="fc7", vgg_f7_shape, dropout=is_train, keep_prob=0.5, var_dict=var_dict)
+        '''
 
         if random_init_fc8:
             # Randomly init fc8
@@ -113,7 +103,8 @@ class FCN16VGG:
             # If we are using vgg16 trained weight
             feed_name_score_fr = 'fc8'
 
-        model['score_fr'] = nn.score_layer(model['fconv7'], feed_dict,
+        
+        model['score_fr'] = nn.score_layer(model['conv7'], feed_dict,
                                            feed_name=feed_name_score_fr,
                                            name="score_fr",
                                            num_classes=num_classes,
@@ -147,7 +138,7 @@ class FCN16VGG:
         # image = tf.concat(3, [blue, green, red])
 
         # Basic model
-        model = self._build_model(image, num_classes, is_train=False, random_init_fc8=random_init_fc8)
+        model = self._build_model(image, num_classes, is_train=False)
 
         predict = {}
 
@@ -227,7 +218,7 @@ class FCN16VGG:
         '''
 
         # Important: When training, random_init_fc8=True. When inference, random_init_fc8=False
-        model = self._build_model(image, params['num_classes'], is_train=True, random_init_fc8=random_init_fc8, save_var=save_var)
+        model = self._build_model(image, params['num_classes'], is_train=True, save_var=save_var)
 
         # FCN-32s
         upscore32 = nn.upscore_layer(model['score_fr'],      # output from last layer
