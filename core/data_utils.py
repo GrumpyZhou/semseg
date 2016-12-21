@@ -16,6 +16,11 @@ def load_weight(path):
     data_dict = np.load(fpath, encoding='latin1').item()
     print("Successfully load weight file from %s."%fpath)
     return data_dict
+"""
+# Following code to check what's inside the weight dict
+w = load_weight('data/city_fcn16_skip.npy')
+print(w.keys())
+"""
 
 def vgg16_weight_transform(vgg16_path, vgg16_new_path):
     '''
