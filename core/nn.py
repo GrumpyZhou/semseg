@@ -28,7 +28,6 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
                             strides=[1, stride, stride, 1],
                             padding='SAME')
         conv_out = tf.nn.bias_add(conv, bias) 
-        # conv_out = tf.nn.relu(tf.nn.bias_add(conv, bias), name=scope.name)
             
         if relu:
             conv_out =  tf.nn.relu(conv_out)
@@ -41,11 +40,11 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
     return conv_out
 
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
-def upscore_layer(x, name, shape, num_class, ksize=4, stride=2):
+def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_dict=None):
     strides = [1, stride, stride, 1]
     with tf.variable_scope(name):
+        print('Layer name: %s' % name)          
         in_features = x.get_shape()[3].value
-
         if shape is None:
             # Compute shape out of x
             in_shape = tf.shape(x)
@@ -56,16 +55,17 @@ def upscore_layer(x, name, shape, num_class, ksize=4, stride=2):
         else:
             new_shape = [shape[0], shape[1], shape[2], num_class]
         output_shape = tf.pack(new_shape)
-
         f_shape = [ksize, ksize, num_class, in_features]
 
         # create
         num_input = ksize * ksize * in_features / stride
         stddev = (2 / num_input)**0.5
 
-        weights = get_deconv_filter(f_shape)
-        deconv = tf.nn.conv2d_transpose(x, weights, output_shape,
+        kernel = get_deconv_kernel(feed_dict, name, f_shape)
+        deconv = tf.nn.conv2d_transpose(x, kernel, output_shape,
                                         strides=strides, padding='SAME')
+    if var_dict is not None:
+        var_dict[name] = (kernel, None)
 
     return deconv
 
@@ -95,25 +95,29 @@ def get_bias(feed_dict, feed_name, shape):
     var = tf.get_variable(name="bias", initializer=init, shape=shape)
     return var
     
-def get_deconv_filter(f_shape):
-    # Bilinear interpolation
-    width = f_shape[0]
-    heigh = f_shape[0]
-    f = ceil(width/2.0)
-    c = (2 * f - 1 - f % 2) / (2.0 * f)
-    bilinear = np.zeros([f_shape[0], f_shape[1]])
-    for x in range(width):
-        for y in range(heigh):
-            value = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
-            bilinear[x, y] = value
-    weights = np.zeros(f_shape)
-    for i in range(f_shape[2]):
-        weights[:, :, i, i] = bilinear
-
-    init = tf.constant_initializer(value=weights,
-                                   dtype=tf.float32)
-    return tf.get_variable(name="up_filter", initializer=init,
-                           shape=weights.shape)
+def get_deconv_kernel(feed_dict, feed_name, f_shape):
+    if not feed_dict.has_key(feed_name):
+        print("No matched deconv_kernel %s, use bilinear interpolation " % feed_name)
+        # Bilinear interpolation
+        width = f_shape[0]
+        heigh = f_shape[0]
+        f = ceil(width/2.0)
+        c = (2 * f - 1 - f % 2) / (2.0 * f)
+        bilinear = np.zeros([f_shape[0], f_shape[1]])
+        for x in range(width):
+            for y in range(heigh):
+                value = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
+                bilinear[x, y] = value
+        kernel = np.zeros(f_shape)
+        for i in range(f_shape[2]):
+            kernel[:, :, i, i] = bilinear
+    else:
+        kernel = feed_dict[name][0]
+        print('Load deconv_kernel %s' % feed_name)
+        
+    init = tf.constant_initializer(value=kernel, dtype=tf.float32)
+    var = tf.get_variable(name="upscore_kernel", initializer=init, shape=kernel.shape)
+    return var
 
 """
 def get_weight_variable_with_decay(name, shape, stddev = 0.1, wd = None):
