@@ -27,43 +27,40 @@ import data_utils as dt
 # Specify which GPU to use
 os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
-# Import training and validation dataset
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': True,
                      'seed': None,
                      'dataset': 'train'}
 
+# Define the scale of the network to be trained
+fcn_scale = 'fcn16s'
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn32.npy',
-          'save_trained_weight_path':'../data/city_fcn16_skip.npy'}
+          'trained_weight_path':'../data/city_fcn16_skip_new.npy',
+          'save_trained_weight_path':'../data/city_%s_skip_test.npy'%fcn_scale}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-iterations = 5000
+iterations = 5
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
-    vgg_fcn32s = FCN16VGG(params['trained_weight_path'])
+    fcn = FCN16VGG(params['trained_weight_path'])
 
     # Be aware of loaded data type....
     batch = tf.placeholder(tf.float32, shape=[1, None, None, 3])
-    label = tf.placeholder(tf.int32, shape=[None])	# label is already vectorized before feed
-
+    label = tf.placeholder(tf.int32, shape=[None])
+    
     # create model and train op
-    [train_op, loss] = vgg_fcn32s.train_fcn16(params=params,
-                                              image=batch,
-                                              truth=label,
-                                              random_init_fc8=False,
-                                              save_var=True)
-    trained_var_dict = vgg_fcn32s.var_dict
-    print('Finished building network-fcn16-skip.')
+    [train_op, loss] = fcn.train(params=params, image=batch, truth=label, scale_min=fcn_scale, save_var=True)
+    var_dict_to_train = fcn.var_dict
+ 
     init = tf.initialize_all_variables()
     sess.run(init)
 
-    print('Start training cn16-skip...')
+    print('Start training...')
     for i in range(iterations):
         print("iter: ", i)
         # Load data, Already converted to BGR
@@ -80,12 +77,13 @@ with tf.Session() as sess:
         sess.run(train_op, feed_dict)
 
         print('Loss: ', sess.run(loss, feed_dict))
-    print('Finished training cn16-skip')
+    print('Finished training')
 
 
     # Save weight
     npy_path = params['save_trained_weight_path']
     weight_dict = sess.run(trained_var_dict)
+    print('Saving trained weight... ')
     if len(weight_dict.keys()) != 0:
         for key in weight_dict.keys():
             print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, weight_dict[key][0].shape, weight_dict[key][1].shape))
