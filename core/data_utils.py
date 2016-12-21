@@ -16,11 +16,6 @@ def load_weight(path):
     data_dict = np.load(fpath, encoding='latin1').item()
     print("Successfully load weight file from %s."%fpath)
     return data_dict
-"""
-# Following code to check what's inside the weight dict
-w = load_weight('data/city_fcn16_skip.npy')
-print(w.keys())
-"""
 
 def vgg16_weight_transform(vgg16_path, vgg16_new_path):
     '''
@@ -40,11 +35,25 @@ def vgg16_weight_transform(vgg16_path, vgg16_new_path):
     dict_to_add = {'conv6_1': data_dict['conv5_1'],
                    'conv6_2': data_dict['conv5_2']}
     data_dict.update(dict_to_add)
-
+    print('New keys:%s'%str(data_dict.keys()))
     # Save result
     np.save(vgg16_new_path, data_dict)
     print("Successfully save weight file to %s."%vgg16_new_path)
-    
+
+def temp_weight_transform(path, new_path):
+    '''To adapt already generated .npy e.g city_fcn32.npy city_fcn16_skip.npy
+       will be deleted later'''
+    data_dict = load_weight(path)
+    data_dict['conv6_1'] = data_dict.pop('fc6_1', None)
+    data_dict['conv6_2'] = data_dict.pop('fc6_2', None)
+    data_dict['conv6_3'] = data_dict.pop('fc6_3', None)
+    data_dict['conv7'] = data_dict.pop('fc7', None)
+    print('New keys:%s'%str(data_dict.keys()))
+
+    np.save(new_path, data_dict)
+    print("Successfully save weight file to %s."%new_path)
+
+ 
 
 # Deprecated because produced color truth image does not match the original
 def color_image(image, num_classes=22):
@@ -77,6 +86,6 @@ print(img.shape,' ',lbl==None)
 '''
 
 
-'''vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')'''
-
-
+vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')
+temp_weight_transform('./data/city_fcn32.npy','./data/city_fcn32_new.npy')
+temp_weight_transform('./data/city_fcn16_skip.npy','./data/city_fcn16_skip_new.npy')
