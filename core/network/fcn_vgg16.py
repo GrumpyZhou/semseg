@@ -30,9 +30,8 @@ class FCN16VGG:
     def _build_model(self, image, num_classes, is_train=False, scale_min='fcn16s', save_var=False):
         model = {}
         feed_dict = self.data_dict
-
         if save_var:
-            var_dict = self.var_dict
+            var_dict = {}
         else:
             var_dict = None
 
@@ -115,7 +114,7 @@ class FCN16VGG:
             in_features = model['pool3'].get_shape()[3].value
             score_pool3 = nn.conv_layer(model['pool3'], self.data_dict, "score_pool3", 
                                         shape=[1, 1, in_features, num_classes], 
-                                        relu=False, dropout=False, var_dict=self.var_dict)
+                                        relu=False, dropout=False, var_dict=var_dict)
 
             fuse_pool3 = tf.add(score_pool3, upscore_pool4_2s)
 
@@ -123,7 +122,8 @@ class FCN16VGG:
             model['fcn8s'] = nn.upscore_layer(fuse_pool3, feed_dict, "upscore8",
                                               tf.shape(image), num_classes,
                                               ksize=16, stride=8, var_dict=var_dict)
-
+         
+        self.var_dict = var_dict
         print('Model with scale %s is builded successfully!' % scale_min)
         print('Model: %s' % str(model.keys()))
         return model

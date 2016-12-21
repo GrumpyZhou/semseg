@@ -85,7 +85,8 @@ dt = CityDataSet(data_config)
 print(img.shape,' ',lbl==None)
 '''
 
-
+"""
 vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')
 temp_weight_transform('./data/city_fcn32.npy','./data/city_fcn32_new.npy')
 temp_weight_transform('./data/city_fcn16_skip.npy','./data/city_fcn16_skip_new.npy')
+"""
