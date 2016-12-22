@@ -12,45 +12,45 @@ from collections import namedtuple
 from scipy.misc import imsave
 
 # define a data structure
-Label_City = namedtuple( 'Label' , ['name', 'trainId', 'color',] )
+Label_City = namedtuple( 'Label' , ['name', 'labelId', 'trainId', 'color',] )
 
 
 class CityDataSet():
 
     def __init__(self, params):
         ''' type: 'train', 'val', 'test' '''
-        self.dataset_type = params.get('dataset','train')     
+        self.dataset_type = params.get('dataset','train')
         self.city_dir = params.get('city_dir','../data/CityDatabase')
         self.pred_save_path = params.get('pred_save_path','../data/test_city')
-        
+
         # Load dataset indices
         (self.img_indices, self.lbl_indices) = self.load_indicies()
-       
+
         # Create mapping of (lable_name, id, color)
         self.labels = [
-            Label_City(  'road'          ,   0, (128, 64,128) ),
-            Label_City(  'sidewalk'      ,   1, (244, 35,232) ),
-            Label_City(  'building'      ,   2, ( 70, 70, 70) ),
-            Label_City(  'wall'          ,   3, (102,102,156) ),
-            Label_City(  'fence'         ,   4, (190,153,153) ),
-            Label_City(  'pole'          ,   5, (153,153,153) ),
-            Label_City(  'traffic light' ,   6, (250,170, 30) ),
-            Label_City(  'traffic sign'  ,   7, (220,220,  0) ),
-            Label_City(  'vegetation'    ,   8, (107,142, 35) ),
-            Label_City(  'terrain'       ,   9, (152,251,152) ),
-            Label_City(  'sky'           ,  10, ( 70,130,180) ),
-            Label_City(  'person'        ,  11, (220, 20, 60) ),
-            Label_City(  'rider'         ,  12, (255,  0,  0) ),
-            Label_City(  'car'           ,  13, (  0,  0,142) ),
-            Label_City(  'truck'         ,  14, (  0,  0, 70) ),
-            Label_City(  'bus'           ,  15, (  0, 60,100) ),
-            Label_City(  'train'         ,  16, (  0, 80,100) ),
-            Label_City(  'motorcycle'    ,  17, (  0,  0,230) ),
-            Label_City(  'bicycle'       ,  18, (119, 11, 32) ),
-            Label_City(  'void'          ,  19, (  0,  0,  0) )
+            Label_City(  'road'          ,   7,  0, (128, 64,128) ),
+            Label_City(  'sidewalk'      ,   8,  1, (244, 35,232) ),
+            Label_City(  'building'      ,   11,  2, ( 70, 70, 70) ),
+            Label_City(  'wall'          ,   12,  3, (102,102,156) ),
+            Label_City(  'fence'         ,   13,  4, (190,153,153) ),
+            Label_City(  'pole'          ,   17,  5, (153,153,153) ),
+            Label_City(  'traffic light' ,   19,  6, (250,170, 30) ),
+            Label_City(  'traffic sign'  ,   20,  7, (220,220,  0) ),
+            Label_City(  'vegetation'    ,   21,  8, (107,142, 35) ),
+            Label_City(  'terrain'       ,   22,  9, (152,251,152) ),
+            Label_City(  'sky'           ,   23, 10, ( 70,130,180) ),
+            Label_City(  'person'        ,   24, 11, (220, 20, 60) ),
+            Label_City(  'rider'         ,   25, 12, (255,  0,  0) ),
+            Label_City(  'car'           ,   26, 13, (  0,  0,142) ),
+            Label_City(  'truck'         ,   27, 14, (  0,  0, 70) ),
+            Label_City(  'bus'           ,   28, 15, (  0, 60,100) ),
+            Label_City(  'train'         ,   31, 16, (  0, 80,100) ),
+            Label_City(  'motorcycle'    ,   32, 17, (  0,  0,230) ),
+            Label_City(  'bicycle'       ,   33, 18, (119, 11, 32) ),
+            Label_City(  'void'          ,   19, 19, (  0,  0,  0) )
         ]
         self.trainId2Color = [label.color for label in self.labels]
-
+        self.trainId2labelId = [label.labelId for label in labels]
         # Randomization for training
         self.idx = 0
         self.random = params.get('randomize',True)
@@ -65,7 +65,7 @@ class CityDataSet():
         print('Load %s dataset'%self.dataset_type)
         files_img = []
         files_lbl = []
-        
+
         # Load training images
         search_img = os.path.join(self.city_dir,
                                   'leftImg8bit',
@@ -100,7 +100,7 @@ class CityDataSet():
             if self.idx == len(self.img_indices):
                 self.idx = 0
         img_fname = self.img_indices[self.idx]
-        print('Batch index: %d'%self.idx)        
+        print('Batch index: %d'%self.idx)
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
 
@@ -185,6 +185,36 @@ class CityDataSet():
             values = self.trainId2Color[idx]
             vector[-iaxis_pad_width[1]:] = values
         return vector
+
+    def convert_to_labelID(self, result_path, save_path):
+        '''
+        For evaluation purpose:
+        convert prediction (trainID labeled png) to
+        evaluation format (labelID png).
+        '''
+        search_path = os.path.join(result_path, '*')
+        files_img = glob.glob(search_path)
+        files_img.sort()
+
+        for idx in len(files_img):
+            img = Image.open(files_img[idx])
+            H = img.shape[0]
+            W = img.shape[1]
+            print("test_height: ", H)
+            print("test_width: ", W)
+            image = np.array(img, type=np.uint8)
+            image = np.reshape(image, (H*W))
+
+            print("transforming format of image %s ..."%files_img[idx])
+            for i in range(H*W):
+                image[i] = self.trainId2labelId[image[i]]
+            print("transform done!")
+
+            # Restore to original image size
+            image = np.reshape(image, (H, W))
+            output_img = files_img[idx].replace(result_path, save_path)
+            imsave(output_img, image)
+            print("save transformed image to %s"%output_img)
 
 
 # Test example
