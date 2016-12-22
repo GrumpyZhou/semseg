@@ -162,11 +162,9 @@ class CityDataSet():
         search_img = os.path.join(load_path, '*.png')
         img_files = glob.glob(search_img)
         img_files.sort()
-        print("files: ", img_files)
 
         for i in range(len(img_files)):
             fname = img_files[i]
-            print("load file: %s"%fname)
             pred_in = imread(fname)
             # Pad with RGB channels, producing [1, Height, Width, 4]
             pred_in = pred_in[np.newaxis, ..., np.newaxis]
@@ -218,35 +216,33 @@ class CityDataSet():
         print("TrainIDs prediction saved to %s "%save_path)
 
 
-    def convert_to_labelID(self, result_path, save_path):
+    def pred_to_labelID(self, load_path, save_path):
         '''
         For evaluation purpose:
         convert prediction (trainID labeled png) to
         evaluation format (labelID png).
+
+        Input:  load_path, original prediction images. Each image has shape [H,W]
+        Output: save_path, converted color prediction images. Each image need to be [H,W]
         '''
-        search_path = os.path.join(result_path, '*')
+        search_path = os.path.join(load_path, '*')
         files_img = glob.glob(search_path)
         files_img.sort()
 
         for idx in range(len(files_img)):
             img = imread(files_img[idx])
-            print("read image %s"%files_img[idx])
             H = img.shape[0]
             W = img.shape[1]
-            print("shape: ", img.shape)
-            print("test_height: ", H)
-            print("test_width: ", W)
             image = np.array(img, dtype=np.uint8)
             image = np.reshape(image, (H*W))
 
-            print("transforming format of image %s ..."%files_img[idx])
             for i in range(H*W):
                 image[i] = self.trainId2labelId[image[i]]
-            print("transform done!")
 
             # Restore to original image size
             image = np.reshape(image, (H, W))
-            output_img = files_img[idx].replace(result_path, save_path)
+            output_img = files_img[idx].replace(load_path, save_path)
+            output_img = output_img.replace('trainIDs', 'labelIDs')
             imsave(output_img, image)
             print("save transformed image to %s"%output_img)
 

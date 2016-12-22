@@ -73,5 +73,5 @@ with tf.Session() as sess:
                 #test_dataset.pred_to_color(fname_prefix, predict[key])
     print("inference done! Start transforming to colored ...")
     test_dataset.pred_to_color(test_data_config['pred_save_path'], '../data/test_city_colored')
-    #test_dataset.convert_to_labelID(test_data_config['pred_save_path'], '../data/submit_city')
+    test_dataset.pred_to_labelID(test_data_config['pred_save_path'], '../data/test_city_labelIDs')
 
