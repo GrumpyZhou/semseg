@@ -10,6 +10,7 @@ import numpy as np
 import glob
 from collections import namedtuple
 from scipy.misc import imsave
+from scipy.misc import imread
 
 # define a data structure
 Label_City = namedtuple( 'Label' , ['name', 'labelId', 'trainId', 'color',] )
@@ -197,7 +198,7 @@ class CityDataSet():
         files_img.sort()
 
         for idx in range(len(files_img)):
-            img = Image.open(files_img[idx])
+            img = imread(files_img[idx])
             H = img.shape[0]
             W = img.shape[1]
             print("test_height: ", H)
