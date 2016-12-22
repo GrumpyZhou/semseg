@@ -196,7 +196,8 @@ class CityDataSet():
         fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
         save_path = os.path.join(self.pred_save_path,fname)
         pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2]))
-        imsave(save_path, pred_in)
+        misc.toimage(pred_in, high=19, low=0, cmin=0, cmax=19).save(save_path)
+        #imsave(save_path, pred_in)
         print("TrainID prediction saved to %s "%save_path)
 
 
@@ -223,8 +224,6 @@ class CityDataSet():
 
             print("transforming format of image %s ..."%files_img[idx])
             for i in range(H*W):
-                if image[i] >= 20:
-                    print("index out of range, ", image[i])
                 image[i] = self.trainId2labelId[image[i]]
             print("transform done!")
 
