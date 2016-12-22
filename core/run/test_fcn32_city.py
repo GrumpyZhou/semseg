@@ -74,6 +74,6 @@ with tf.Session() as sess:
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
                 #test_dataset.pred_to_color(fname_prefix, predict[key])
     print("inference done! Start transforming to colored ...")
-    test_dataset.pred_to_color(test_data_config['pred_save_path'])
-    test_dataset.pred_to_labelID(test_data_config['pred_save_path'])
+    test_dataset.pred_to_color()
+    test_dataset.pred_to_labelID()
 
