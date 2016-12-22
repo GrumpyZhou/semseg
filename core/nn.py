@@ -65,7 +65,7 @@ def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_d
         deconv = tf.nn.conv2d_transpose(x, kernel, output_shape,
                                         strides=strides, padding='SAME')
     if var_dict is not None:
-        var_dict[name] = (kernel, None)
+        var_dict[name] = (kernel)
 
     return deconv
 
@@ -112,7 +112,7 @@ def get_deconv_kernel(feed_dict, feed_name, f_shape):
         for i in range(f_shape[2]):
             kernel[:, :, i, i] = bilinear
     else:
-        kernel = feed_dict[name][0]
+        kernel = feed_dict[feed_name][0]
         print('Load deconv_kernel %s' % feed_name)
         
     init = tf.constant_initializer(value=kernel, dtype=tf.float32)

@@ -43,7 +43,7 @@ params = {'num_classes': 20, 'rate': 1e-4,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-iterations = 2 
+iterations = 1 
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
@@ -56,7 +56,7 @@ with tf.Session() as sess:
     # create model and train op
     [train_op, loss] = fcn.train(params=params, image=batch, truth=label, scale_min=fcn_scale, save_var=True)
     var_dict_to_train = fcn.var_dict
-    print('!!!', type(var_dict_to_train),var_dict_to_train==None)
+    print('!!!%s'%str(var_dict_to_train.keys()))
  
     init = tf.initialize_all_variables()
     sess.run(init)

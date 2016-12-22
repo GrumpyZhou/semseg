@@ -35,7 +35,7 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'pred_save_path':'../data/test_city'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn16_skip_new.npy',
+          'trained_weight_path':'../data/city_fcn16s_skip_test.npy',
           'pred_type_prefix':'_skip_'} # When saving predicting result, the prefix is 
                                        # concatenated into the file name
 
