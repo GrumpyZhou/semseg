@@ -181,7 +181,7 @@ class CityDataSet():
             img_inx = fname.split('/')
             img_inx = img_inx[3]
             img_inx = img_inx.replace('trainIDs', 'colored')
-            save_path = os.path.join(save_path,img_inx)
+            save_path = save_path + '/' + img_inx
             imsave(save_path, pred)
             print('Colored prediction saved to %s '%save_path)
 
