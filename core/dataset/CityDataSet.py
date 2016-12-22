@@ -195,7 +195,7 @@ class CityDataSet():
         img_inx = self.img_indices[self.idx].split('_')
         fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
         save_path = os.path.join(self.pred_save_path,fname)
-        pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2])
+        pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2]))
         imsave(save_path, pred_in)
         print("TrainID prediction saved to %s "%save_path)
 
