@@ -195,7 +195,7 @@ class CityDataSet():
         img_inx = self.img_indices[self.idx].split('/')
         fname = img_inx[6]
         fname = fname.split('_')
-        fname = fname_prefix+fname[0]+fname[1]+fname[2]+'_trainIDs.png'
+        fname = fname_prefix+fname[0]+'_'+fname[1]+'_'+fname[2]+'_trainIDs.png'
         save_path = os.path.join(self.pred_save_path,fname)
 
         # Reshape to [H,W]
