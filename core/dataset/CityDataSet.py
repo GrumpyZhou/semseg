@@ -154,29 +154,35 @@ class CityDataSet():
 
         return label
 
-    def pred_to_color(self, fname_prefix, pred_in):
+    def pred_to_color(self, load_path, save_path):
         '''
-        Input:  data_instance, should be an instance of CityDataSet.
-                pred: predicted matrix, must be [1, Height, Width]
-        Return: colored .png image
+        Input:  load_path, original prediction images. Each image has shape [H,W]
+        Output: save_path, converted color prediction images. Each image need to be [H,W,3]
         '''
-        # Pad with RGB channels, producing [1, Height, Width, 4]
-        pred_in = pred_in[..., np.newaxis]
-        pred = np.lib.pad(pred_in, ((0,0),(0,0),(0,0),(0,3)), self.padding_func)
-        # Slice RGB channels
-        pred = pred[:,:,:,1:4]
-        H = pred.shape[1]
-        W = pred.shape[2]
-        pred = np.reshape(pred, (H,W,3) )
+        search_img = os.path.join(load_path, '*.png')
+        img_files = glob.glob(search_img)
+        img_files.sort()
+        for i in range(len(img_files)):
+            fname = img_files[i]
+            pred_in = imread(fname)
+            # Pad with RGB channels, producing [1, Height, Width, 4]
+            pred_in = pred_in[np.newaxis, ..., np.newaxis]
+            pred = np.lib.pad(pred_in, ((0,0),(0,0),(0,0),(0,3)), self.padding_func)
+            # Slice RGB channels
+            pred = pred[:,:,:,1:4]
+            H = pred.shape[1]
+            W = pred.shape[2]
+            pred = np.reshape(pred, (H,W,3) )
 
-        # write to .png file
-        img_inx = self.img_indices[self.idx].split('_')
-        fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
-        save_path = os.path.join(self.pred_save_path,fname)
-        imsave(save_path, pred)
-        print('Colored prediction saved to %s '%save_path)
+            # write to .png file
+            img_inx = fname.split('/')
+            img_inx = img_inx[3]
+            img_inx.replace('trainIDs', 'colored')
+            save_path = os.path.join(save_path,img_inx)
+            imsave(save_path, pred)
+            print('Colored prediction saved to %s '%save_path)
 
-        return pred
+        return None
 
 
     def padding_func(self, vector, iaxis_pad_width, iaxis, kwargs):
