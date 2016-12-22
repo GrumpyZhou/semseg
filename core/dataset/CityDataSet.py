@@ -212,6 +212,7 @@ class CityDataSet():
 
         for idx in range(len(files_img)):
             img = imread(files_img[idx])
+            print("read image %s"%files_img[idx])
             H = img.shape[0]
             W = img.shape[1]
             print("shape: ", img.shape)
