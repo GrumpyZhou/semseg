@@ -203,7 +203,7 @@ class CityDataSet():
             W = img.shape[1]
             print("test_height: ", H)
             print("test_width: ", W)
-            image = np.array(img, type=np.uint8)
+            image = np.array(img, dtype=np.uint8)
             image = np.reshape(image, (H*W))
 
             print("transforming format of image %s ..."%files_img[idx])
