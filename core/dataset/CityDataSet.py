@@ -187,6 +187,14 @@ class CityDataSet():
             vector[-iaxis_pad_width[1]:] = values
         return vector
 
+    def save_trainID_img(self, fname_prefix, pred_in):
+        img_inx = self.img_indices[self.idx].split('_')
+        fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
+        save_path = os.path.join('../data/test_city_trainID',fname)
+        imsave(save_path, pred_in)
+        print("TrainID prediction saved to %s "%save_path)
+
+
     def convert_to_labelID(self, result_path, save_path):
         '''
         For evaluation purpose:
