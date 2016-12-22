@@ -25,7 +25,7 @@ import data_utils as dt
 import glob
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
@@ -35,8 +35,8 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'pred_save_path':'../data/test_city'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn16s_skip_test.npy',
-          'pred_type_prefix':'_skip_test'} # When saving predicting result, the prefix is 
+          'trained_weight_path':'../data/city_fcn16_skip_new.npy',
+          'pred_type_prefix':'_skip_test'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
@@ -49,7 +49,7 @@ with tf.Session() as sess:
 
     # Build fcn32 model
     option={'fcn32s':True, 'fcn16s':True, 'fcn8s':False}
-    predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'], 
+    predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
                                     scale_min='fcn16s', option=option)
 
     predict = {}
@@ -68,6 +68,8 @@ with tf.Session() as sess:
         predict = sess.run(predict_, feed_dict=feed_dict)
         for key in option.keys():
             if option[key]:
-                fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color 
+                fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
                 test_dataset.pred_to_color(fname_prefix, predict[key])
-               
+    print("inference done! Staring transform format for evaluation...")
+    test_dataset.convert_to_labelID(test_data_config['pred_save_path'], '../data/submit_city')
+
