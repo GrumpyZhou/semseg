@@ -201,6 +201,7 @@ class CityDataSet():
             img = imread(files_img[idx])
             H = img.shape[0]
             W = img.shape[1]
+            print("shape: ", img.shape)
             print("test_height: ", H)
             print("test_width: ", W)
             image = np.array(img, dtype=np.uint8)
