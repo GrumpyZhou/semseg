@@ -194,7 +194,9 @@ class CityDataSet():
         This method is meant to save original prediction into .png
         pred_in shape: [1, H, W] -> need to reshape to [H, W] to save .png
         '''
-        img_inx = self.img_indices[self.idx].split('/')
+        # Since self.idx is already increased by 1, need to decrease 1.
+        img_idx = self.idx - 1
+        img_inx = self.img_indices[img_idx].split('/')
         fname = img_inx[6]
         fname = fname.split('_')
         fname = fname_prefix+fname[0]+'_'+fname[1]+'_'+fname[2]+'_trainIDs.png'
