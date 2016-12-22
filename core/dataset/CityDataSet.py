@@ -196,7 +196,7 @@ class CityDataSet():
         files_img = glob.glob(search_path)
         files_img.sort()
 
-        for idx in len(files_img):
+        for idx in range(len(files_img)):
             img = Image.open(files_img[idx])
             H = img.shape[0]
             W = img.shape[1]
