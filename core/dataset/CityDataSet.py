@@ -189,16 +189,18 @@ class CityDataSet():
 
     def save_trainID_img(self, fname_prefix, pred_in):
         '''
-        pred_in shape: [1, H, W]
-        need to reshape to [H, W] to save .png
+        This method is meant to save original prediction into .png
+        pred_in shape: [1, H, W] -> need to reshape to [H, W] to save .png
         '''
         img_inx = self.img_indices[self.idx].split('_')
-        fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
+        fname = fname_prefix+img_inx[0]+img_inx[1]+img_inx[2]+'_trainIDs.png'
         save_path = os.path.join(self.pred_save_path,fname)
+
+        # Reshape to [H,W]
         pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2]))
+        # Save .png, don't rescale
         toimage(pred_in, high=19, low=0, cmin=0, cmax=19).save(save_path)
-        #imsave(save_path, pred_in)
-        print("TrainID prediction saved to %s "%save_path)
+        print("Original prediction saved to %s "%save_path)
 
 
     def convert_to_labelID(self, result_path, save_path):
