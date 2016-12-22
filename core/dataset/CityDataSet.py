@@ -106,13 +106,14 @@ class CityDataSet():
         image = image.reshape(1, *image.shape)
 
         if self.dataset_type == 'test':
+            self.idx += 1
             return (image, None)
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
             label = label.reshape(1, *label.shape)
+            self.idx += 1
 
-        self.idx += 1
         return (image,label)
 
     def load_image(self, fname):
