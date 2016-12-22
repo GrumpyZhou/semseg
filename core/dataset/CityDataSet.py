@@ -182,7 +182,7 @@ class CityDataSet():
             img_inx = img_inx[3]
             print("sliced dir: %s"%img_inx)
             img_inx.replace('trainIDs', 'colored')
-            print("replaced dir: %s"img_inx)
+            print("replaced dir: %s"%img_inx)
             save_path = os.path.join(save_path,img_inx)
             print("save path: %s"%save_path)
             imsave(save_path, pred)
