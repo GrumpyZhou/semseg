@@ -162,7 +162,7 @@ class CityDataSet():
         search_img = os.path.join(load_path, '*.png')
         img_files = glob.glob(search_img)
         img_files.sort()
-        print("files: "， img_files)
+        print("files: ", img_files)
 
         for i in range(len(img_files)):
             fname = img_files[i]
