@@ -188,6 +188,7 @@ class CityDataSet():
         return vector
 
     def save_trainID_img(self, fname_prefix, pred_in):
+        print("pred_in shape: ", pred_in.shape)
         img_inx = self.img_indices[self.idx].split('_')
         fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
         save_path = os.path.join(self.pred_save_path,fname)
