@@ -56,7 +56,6 @@ with tf.Session() as sess:
     # create model and train op
     [train_op, loss] = fcn.train(params=params, image=batch, truth=label, scale_min=fcn_scale, save_var=True)
     var_dict_to_train = fcn.var_dict
-    print('!!!%s'%str(var_dict_to_train.keys()))
  
     init = tf.initialize_all_variables()
     sess.run(init)

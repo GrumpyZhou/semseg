@@ -112,8 +112,8 @@ def get_deconv_kernel(feed_dict, feed_name, f_shape):
         for i in range(f_shape[2]):
             kernel[:, :, i, i] = bilinear
     else:
-        kernel = feed_dict[feed_name][0]
-        print('Load deconv_kernel %s' % feed_name)
+        kernel = feed_dict[feed_name]
+        print('Load deconv_kernel %s with shape: %s' % (feed_name, kernel.shape))
         
     init = tf.constant_initializer(value=kernel, dtype=tf.float32)
     var = tf.get_variable(name="upscore_kernel", initializer=init, shape=kernel.shape)
@@ -148,3 +148,5 @@ def get_bias_variable(name, shape, const = 0.1):
     tf.get_variable(name = name, shape = shape, initializer = initializer)
     pass
 """
+
+
