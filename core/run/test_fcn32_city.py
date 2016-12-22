@@ -71,6 +71,7 @@ with tf.Session() as sess:
                 fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
                 #test_dataset.pred_to_color(fname_prefix, predict[key])
-    #print("inference done! Staring transform format for evaluation...")
+    print("inference done! Start transforming to colored ...")
+    test_dataset.pred_to_color(test_data_config['pred_save_path'], '../data/test_city_colored')
     #test_dataset.convert_to_labelID(test_data_config['pred_save_path'], '../data/submit_city')
 
