@@ -32,7 +32,7 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
                      'dataset':'test',
-                     'pred_save_path':'../data/test_city'}
+                     'pred_save_path':'../data/test_city_trainID'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
           'trained_weight_path':'../data/city_fcn16_skip_new.npy',
@@ -69,7 +69,8 @@ with tf.Session() as sess:
         for key in option.keys():
             if option[key]:
                 fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
-                test_dataset.pred_to_color(fname_prefix, predict[key])
+                test_dataset.save_trainID_img(fname_prefix, predict[key])
+                #test_dataset.pred_to_color(fname_prefix, predict[key])
     print("inference done! Staring transform format for evaluation...")
     test_dataset.convert_to_labelID(test_data_config['pred_save_path'], '../data/submit_city')
 
