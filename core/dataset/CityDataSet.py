@@ -50,7 +50,7 @@ class CityDataSet():
             Label_City(  'void'          ,   19, 19, (  0,  0,  0) )
         ]
         self.trainId2Color = [label.color for label in self.labels]
-        self.trainId2labelId = [label.labelId for label in labels]
+        self.trainId2labelId = [label.labelId for label in self.labels]
         # Randomization for training
         self.idx = 0
         self.random = params.get('randomize',True)
