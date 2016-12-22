@@ -97,7 +97,7 @@ class CityDataSet():
         if self.random:
             self.idx = random.randint(0, len(self.img_indices)-1)
         else:
-            self.idx += 1
+            # self.idx += 1
             if self.idx == len(self.img_indices):
                 self.idx = 0
         img_fname = self.img_indices[self.idx]
@@ -112,6 +112,7 @@ class CityDataSet():
             label = self.load_label(lbl_fname)
             label = label.reshape(1, *label.shape)
 
+        self.idx += 1
         return (image,label)
 
     def load_image(self, fname):
