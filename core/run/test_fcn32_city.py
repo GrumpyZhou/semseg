@@ -32,7 +32,9 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
                      'dataset':'test',
-                     'pred_save_path':'../data/test_city_trainIDs'}
+                     'pred_save_path':'../data/test_city_trainIDs',
+                     'colored_save_path': '../data/test_city_colored',
+                     'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
           'trained_weight_path':'../data/city_fcn16_skip_new.npy',
@@ -72,6 +74,6 @@ with tf.Session() as sess:
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
                 #test_dataset.pred_to_color(fname_prefix, predict[key])
     print("inference done! Start transforming to colored ...")
-    test_dataset.pred_to_color(test_data_config['pred_save_path'], '../data/test_city_colored')
-    test_dataset.pred_to_labelID(test_data_config['pred_save_path'], '../data/test_city_labelIDs')
+    test_dataset.pred_to_color(test_data_config['pred_save_path'])
+    test_dataset.pred_to_labelID(test_data_config['pred_save_path'])
 

@@ -23,6 +23,8 @@ class CityDataSet():
         self.dataset_type = params.get('dataset','train')
         self.city_dir = params.get('city_dir','../data/CityDatabase')
         self.pred_save_path = params.get('pred_save_path','../data/test_city')
+        self.colored_save_path = params.get('colored_save_path', '../data/test_city_colored')
+        self.labelIDs_save_path = params.get('labelIDs_save_path', '../data/test_city_labelIDs')
 
         # Load dataset indices
         (self.img_indices, self.lbl_indices) = self.load_indicies()
@@ -154,10 +156,10 @@ class CityDataSet():
 
         return label
 
-    def pred_to_color(self, load_path, save_path):
+    def pred_to_color(self, load_path):
         '''
         Input:  load_path, original prediction images. Each image has shape [H,W]
-        Output: save_path, converted color prediction images. Each image need to be [H,W,3]
+        Output: self.colored_save_path, converted color prediction images. Each image need to be [H,W,3]
         '''
         search_img = os.path.join(load_path, '*.png')
         img_files = glob.glob(search_img)
@@ -179,7 +181,7 @@ class CityDataSet():
             img_inx = fname.split('/')
             img_inx = img_inx[3]
             img_inx = img_inx.replace('trainIDs', 'colored')
-            save_color_path = save_path + '/' + img_inx
+            save_color_path = self.colored_save_path + '/' + img_inx
             imsave(save_color_path, pred)
             print('Colored prediction saved to %s '%save_color_path)
 
@@ -216,19 +218,20 @@ class CityDataSet():
         print("TrainIDs prediction saved to %s "%save_path)
 
 
-    def pred_to_labelID(self, load_path, save_path):
+    def pred_to_labelID(self, load_path):
         '''
         For evaluation purpose:
         convert prediction (trainID labeled png) to
         evaluation format (labelID png).
 
         Input:  load_path, original prediction images. Each image has shape [H,W]
-        Output: save_path, converted color prediction images. Each image need to be [H,W]
+        Output: self.labelIDs_save_path, converted color prediction images. Each image need to be [H,W]
         '''
         search_path = os.path.join(load_path, '*')
         files_img = glob.glob(search_path)
         files_img.sort()
 
+        print("TrainIDs prediction has %d images."%len(files_img))
         for idx in range(len(files_img)):
             img = imread(files_img[idx])
             H = img.shape[0]
@@ -241,10 +244,14 @@ class CityDataSet():
 
             # Restore to original image size
             image = np.reshape(image, (H, W))
-            output_img = files_img[idx].replace(load_path, save_path)
+            output_img = files_img[idx].replace(load_path, self.labelIDs_save_path)
             output_img = output_img.replace('trainIDs', 'labelIDs')
+
+            ### If want to submit to cityscape challenge, then use this line to rename;
+            ### Otherwise, comment this line.
+            output_img = output_img.replace('fcn16s_skiptest_', '')
             imsave(output_img, image)
-            print("save transformed image to %s"%output_img)
+            print("LabelIDs prediction saved to %s"%output_img)
 
 
 # Test example
