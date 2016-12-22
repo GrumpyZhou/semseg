@@ -222,6 +222,8 @@ class CityDataSet():
 
             print("transforming format of image %s ..."%files_img[idx])
             for i in range(H*W):
+                if image[i] >= 20:
+                    print("index out of range, ", image[i])
                 image[i] = self.trainId2labelId[image[i]]
             print("transform done!")
 
