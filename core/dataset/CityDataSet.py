@@ -162,9 +162,11 @@ class CityDataSet():
         search_img = os.path.join(load_path, '*.png')
         img_files = glob.glob(search_img)
         img_files.sort()
+        print("files: "， img_files)
 
         for i in range(len(img_files)):
             fname = img_files[i]
+            print("load file: %s"%fname)
             pred_in = imread(fname)
             # Pad with RGB channels, producing [1, Height, Width, 4]
             pred_in = pred_in[np.newaxis, ..., np.newaxis]
@@ -178,8 +180,11 @@ class CityDataSet():
             # write to .png file
             img_inx = fname.split('/')
             img_inx = img_inx[3]
+            print("sliced dir: %s"%img_inx)
             img_inx.replace('trainIDs', 'colored')
+            print("replaced dir: %s"img_inx)
             save_path = os.path.join(save_path,img_inx)
+            print("save path: %s"%save_path)
             imsave(save_path, pred)
             print('Colored prediction saved to %s '%save_path)
 

@@ -40,7 +40,7 @@ params = {'num_classes': 20, 'rate': 1e-4,
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 3
+iterations = 1
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
