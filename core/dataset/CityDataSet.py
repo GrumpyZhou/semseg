@@ -162,6 +162,7 @@ class CityDataSet():
         search_img = os.path.join(load_path, '*.png')
         img_files = glob.glob(search_img)
         img_files.sort()
+
         for i in range(len(img_files)):
             fname = img_files[i]
             pred_in = imread(fname)
