@@ -156,12 +156,12 @@ class CityDataSet():
 
         return label
 
-    def pred_to_color(self, load_path):
+    def pred_to_color(self):
         '''
-        Input:  load_path, original prediction images. Each image has shape [H,W]
+        Input:  self.pred_save_path, original prediction images. Each image has shape [H,W]
         Output: self.colored_save_path, converted color prediction images. Each image need to be [H,W,3]
         '''
-        search_img = os.path.join(load_path, '*.png')
+        search_img = os.path.join(self.pred_save_path, '*.png')
         img_files = glob.glob(search_img)
         img_files.sort()
 
@@ -218,16 +218,16 @@ class CityDataSet():
         print("TrainIDs prediction saved to %s "%save_path)
 
 
-    def pred_to_labelID(self, load_path):
+    def pred_to_labelID(self):
         '''
         For evaluation purpose:
         convert prediction (trainID labeled png) to
         evaluation format (labelID png).
 
-        Input:  load_path, original prediction images. Each image has shape [H,W]
+        Input:  self.pred_save_path, original prediction images. Each image has shape [H,W]
         Output: self.labelIDs_save_path, converted color prediction images. Each image need to be [H,W]
         '''
-        search_path = os.path.join(load_path, '*')
+        search_path = os.path.join(self.pred_save_path, '*')
         files_img = glob.glob(search_path)
         files_img.sort()
 
@@ -244,7 +244,7 @@ class CityDataSet():
 
             # Restore to original image size
             image = np.reshape(image, (H, W))
-            output_img = files_img[idx].replace(load_path, self.labelIDs_save_path)
+            output_img = files_img[idx].replace(self.pred_save_path, self.labelIDs_save_path)
             output_img = output_img.replace('trainIDs', 'labelIDs')
 
             ### If want to submit to cityscape challenge, then use this line to rename;
