@@ -42,7 +42,7 @@ params = {'num_classes': 20, 'rate': 1e-4,
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 3
+iterations = 1525
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -73,7 +73,8 @@ with tf.Session() as sess:
                 fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
                 #test_dataset.pred_to_color(fname_prefix, predict[key])
-    print("inference done! Start transforming to colored ...")
-    test_dataset.pred_to_color()
+    # print("Inference done! Start transforming to colored ...")
+    # test_dataset.pred_to_color()
+    print("Inference done! Start transforming to labelIDs ...")
     test_dataset.pred_to_labelID()
 
