@@ -11,7 +11,7 @@ import glob
 from collections import namedtuple
 from scipy.misc import imsave
 from scipy.misc import imread
-
+from scipy.misc import toimage
 # define a data structure
 Label_City = namedtuple( 'Label' , ['name', 'labelId', 'trainId', 'color',] )
 
@@ -196,7 +196,7 @@ class CityDataSet():
         fname = fname_prefix+img_inx[1]+img_inx[2]+'.png'
         save_path = os.path.join(self.pred_save_path,fname)
         pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2]))
-        misc.toimage(pred_in, high=19, low=0, cmin=0, cmax=19).save(save_path)
+        toimage(pred_in, high=19, low=0, cmin=0, cmax=19).save(save_path)
         #imsave(save_path, pred_in)
         print("TrainID prediction saved to %s "%save_path)
 
