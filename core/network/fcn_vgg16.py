@@ -27,12 +27,21 @@ class FCN16VGG:
         # used to save trained weights
         self.var_dict = {}
 
-    def _build_model(self, image, num_classes, is_train=False, scale_min='fcn16s', save_var=False):
+    def _build_model(self, image, num_classes, is_train=False, scale_min='fcn16s', save_var=False, val_dict=None):
+        
         model = {}
-        feed_dict = self.data_dict
-        if save_var:
-            var_dict = {}
+        if val_dict is None:
+            # Not during validation, use pretrained weight
+            feed_dict = self.data_dict
         else:
+            # Duing validation, use the currently trained weight
+            feed_dict = val_dict
+            
+        if save_var:
+            # During training, weights are saved to var_dict
+            var_dict = self.var_dict
+        else:
+            # During inference or validation, no need to save weights
             var_dict = None
 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
@@ -123,7 +132,7 @@ class FCN16VGG:
                                               tf.shape(image), num_classes,
                                               ksize=16, stride=8, var_dict=var_dict)
          
-        self.var_dict = var_dict
+        #self.var_dict = var_dict
         print('Model with scale %s is builded successfully!' % scale_min)
         print('Model: %s' % str(model.keys()))
         return model
@@ -140,7 +149,7 @@ class FCN16VGG:
 
         return predict
 
-    def train(self, params, image, truth, scale_min='fcn16s', save_var=False):
+    def train(self, params, image, truth, scale_min='fcn16s', save_var=True):
         '''
         Note Dtype:
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
@@ -158,3 +167,13 @@ class FCN16VGG:
 
         return train_step, loss
 
+    def validate(self, image, truth, num_classes, scale_min='fcn16s'):
+        # Build validation model
+        model = self._build_model(image, num_classes, is_train=False, scale_min=scale_min, val_dict = self.var_dict)
+        upscored = model[scale_min]
+        old_shape = tf.shape(upscored)
+        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
+        prediction = tf.reshape(upscored, new_shape)
+        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
+        
+        return loss

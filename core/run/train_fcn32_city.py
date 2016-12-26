@@ -25,13 +25,18 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': True,
                      'seed': None,
                      'dataset': 'train'}
+
+val_data_config = {'city_dir':"../data/CityDatabase",
+                     'randomize': True,
+                     'seed': None,
+                     'dataset': 'val'}
 
 # Define the scale of the network to be trained
 fcn_scale = 'fcn16s'
@@ -41,28 +46,36 @@ params = {'num_classes': 20, 'rate': 1e-4,
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
+val_dataset = dt.CityDataSet(val_data_config)
 
 # Hyper-parameters
-iterations = 1 
+train_iter = 1
+validate = False
+val_step = 1
+val_iter = 1
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
     fcn = FCN16VGG(params['trained_weight_path'])
 
     # Be aware of loaded data type....
-    batch = tf.placeholder(tf.float32, shape=[1, None, None, 3])
-    label = tf.placeholder(tf.int32, shape=[None])
+    train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
+    train_label = tf.placeholder(tf.int32, shape=[None])
     
     # create model and train op
-    [train_op, loss] = fcn.train(params=params, image=batch, truth=label, scale_min=fcn_scale, save_var=True)
-    var_dict_to_train = fcn.var_dict
+    [train_op, loss] = fcn.train(params=params, image=train_img, truth=train_label, scale_min=fcn_scale, save_var=True)
+    if validate:
+        val_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
+        val_label = tf.placeholder(tf.int32, shape=[None])
+    
+        val_loss = fcn.validate(image=val_img, truth=val_label, num_classes=params['num_classes'], scale_min=fcn_scale)
  
     init = tf.initialize_all_variables()
     sess.run(init)
 
     print('Start training...')
-    for i in range(iterations):
-        print("iter: ", i)
+    for i in range(train_iter):
+        print("train iter: ", i)
         # Load data, Already converted to BGR
         next_pair = train_dataset.next_batch()
         next_pair_image = next_pair[0]
@@ -71,12 +84,23 @@ with tf.Session() as sess:
         num_pixels = image_shape[1] * image_shape[2]
         next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector
 
-        feed_dict = {batch: next_pair_image,
-                     label: next_pair_label,}
+        train_feed_dict = {train_img: next_pair_image,
+                           train_label: next_pair_label,}
+        sess.run(train_op, train_feed_dict)
+        print('Training Loss: ', sess.run(loss, train_feed_dict))
 
-        sess.run(train_op, feed_dict)
+        if validate and i % val_step == 0:
+            for j in range(val_iter):
+                 next_pair = val_dataset.next_batch()
+                 next_pair_image = next_pair[0]
 
-        print('Loss: ', sess.run(loss, feed_dict))
+                 image_shape = next_pair_image.shape
+                 num_pixels = image_shape[1] * image_shape[2]
+                 next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector
+
+                 val_feed_dict = {val_img: next_pair_image,
+                                  val_label: next_pair_label,}
+                 print('Validation Loss:', sess.run(val_loss, val_feed_dict))
     print('Finished training')
 
 
