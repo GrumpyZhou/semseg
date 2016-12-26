@@ -41,6 +41,7 @@ val_data_config = {'city_dir':"../data/CityDatabase",
 # Define the scale of the network to be trained
 fcn_scale = 'fcn16s'
 params = {'num_classes': 20, 'rate': 1e-4,
+          'tsboard_save_path': '../tsboard_result',
           'trained_weight_path':'../data/city_fcn16_skip_new.npy',
           'save_trained_weight_path':'../data/city_%s_skip_test.npy'%fcn_scale}
 
@@ -52,7 +53,7 @@ val_dataset = dt.CityDataSet(val_data_config)
 train_iter = 1
 validate = False
 val_step = 1
-val_iter = 1
+#val_iter = 1
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
@@ -64,12 +65,17 @@ with tf.Session() as sess:
     
     # create model and train op
     [train_op, loss] = fcn.train(params=params, image=train_img, truth=train_label, scale_min=fcn_scale, save_var=True)
+    tf.scalar_summary('train_loss', loss)
+    
     if validate:
         val_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
         val_label = tf.placeholder(tf.int32, shape=[None])
-    
         val_loss = fcn.validate(image=val_img, truth=val_label, num_classes=params['num_classes'], scale_min=fcn_scale)
- 
+        tf.scalar_summary('val_loss', loss)
+        
+    merged_summary = tf.merge_all_summaries()
+    writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
+    
     init = tf.initialize_all_variables()
     sess.run(init)
 
@@ -90,19 +96,20 @@ with tf.Session() as sess:
         print('Training Loss: ', sess.run(loss, train_feed_dict))
 
         if validate and i % val_step == 0:
-            for j in range(val_iter):
-                 next_pair = val_dataset.next_batch()
-                 next_pair_image = next_pair[0]
+            #for j in range(val_iter):
+             next_pair = val_dataset.next_batch()
+             next_pair_image = next_pair[0]
 
-                 image_shape = next_pair_image.shape
-                 num_pixels = image_shape[1] * image_shape[2]
-                 next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector
+             image_shape = next_pair_image.shape
+             num_pixels = image_shape[1] * image_shape[2]
+             next_pair_label = np.reshape(next_pair[1], num_pixels)	# reshape to numpy 1-D vector
 
-                 val_feed_dict = {val_img: next_pair_image,
-                                  val_label: next_pair_label,}
-                 print('Validation Loss:', sess.run(val_loss, val_feed_dict))
+             val_feed_dict = {val_img: next_pair_image,
+                              val_label: next_pair_label,}
+             summary, val_loss_value = sess.run([merged_summary, val_loss], val_feed_dict)
+             writer.add_summary(summary, i)
+             print('Validation Loss:', val_loss_value)
     print('Finished training')
-
 
     # Save weight
     npy_path = params['save_trained_weight_path']
