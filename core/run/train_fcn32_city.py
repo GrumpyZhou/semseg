@@ -50,9 +50,9 @@ train_dataset = dt.CityDataSet(train_data_config)
 val_dataset = dt.CityDataSet(val_data_config)
 
 # Hyper-parameters
-train_iter = 1
-validate = False
-val_step = 1
+train_iter = 5
+validate = True
+val_step = 2
 #val_iter = 1
 
 with tf.Session() as sess:
@@ -65,6 +65,7 @@ with tf.Session() as sess:
     
     # create model and train op
     [train_op, loss] = fcn.train(params=params, image=train_img, truth=train_label, scale_min=fcn_scale, save_var=True)
+    var_dict_to_train = fcn.var_dict
     tf.scalar_summary('train_loss', loss)
     
     if validate:
