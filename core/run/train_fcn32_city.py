@@ -69,7 +69,7 @@ with tf.Session() as sess:
 
     print('Start training...')
     for i in range(train_iter+1):
-        print("train iter: ", i)
+        #print("train iter: ", i)
         # Load data, Already converted to BGR
         next_pair = train_dataset.next_batch()
         next_pair_image = next_pair[0]
@@ -85,15 +85,15 @@ with tf.Session() as sess:
         if i % 100 == 0:
             summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
             writer.add_summary(summary, i)
-            print('Training Loss: %f' % loss_value)
+            print('Iter %d Training Loss: %f' % (i,loss_value))
             
         # Save weight for validation
         if i >= val_step and i % val_step == 0:
             train_weight_dict = sess.run(var_dict_to_train)
             print('Saving trained weight after %d iterations... '%i)
             if len(train_weight_dict.keys()) != 0:
-                for key in train_weight_dict.keys():
-                    print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, train_weight_dict[key][0].shape, train_weight_dict[key][1].shape))
+                #for key in train_weight_dict.keys():
+                #    print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, train_weight_dict[key][0].shape, train_weight_dict[key][1].shape))
                 fname = 'city_%s_skip_%d.npy'%(fcn_scale,i)
 		fpath = npy_path+fname
                 np.save(fpath, train_weight_dict)

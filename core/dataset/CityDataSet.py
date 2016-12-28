@@ -103,7 +103,7 @@ class CityDataSet():
             if self.idx == len(self.img_indices):
                 self.idx = 0
         img_fname = self.img_indices[self.idx]
-        print('Batch index: %d'%self.idx)
+        #print('Batch index: %d'%self.idx)
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
 
