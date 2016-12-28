@@ -34,9 +34,9 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 # Define the scale of the network to be trained
-fcn_scale = 'fcn8s'
+fcn_scale = 'fcn32s'
 params = {'num_classes': 20, 'rate': 1e-4,
-          'tsboard_save_path': '../data/tsboard_result',
+          'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
           'trained_weight_path':'../data/vgg16_new.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
@@ -44,8 +44,8 @@ params = {'num_classes': 20, 'rate': 1e-4,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 20000
-val_step = 500
+train_iter = 15000
+val_step = 3000
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
@@ -68,7 +68,7 @@ with tf.Session() as sess:
     sess.run(init)
 
     print('Start training...')
-    for i in range(train_iter):
+    for i in range(train_iter+1):
         print("train iter: ", i)
         # Load data, Already converted to BGR
         next_pair = train_dataset.next_batch()
