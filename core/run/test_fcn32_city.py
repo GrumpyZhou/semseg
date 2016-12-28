@@ -37,12 +37,12 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn16_skip_new.npy',
+          'trained_weight_path':'../data/val_weights/city_fcn8s_skip_4.npy',
           'pred_type_prefix':'_skiptest_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 1525
+iterations = 2
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
@@ -50,9 +50,9 @@ with tf.Session() as sess:
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}
+    option={'fcn32s':False, 'fcn16s':True, 'fcn8s':True}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
-                                    scale_min='fcn16s', option=option)
+                                    scale_min='fcn8s', option=option)
 
     predict = {}
     print('Finished building inference network-fcn16.')

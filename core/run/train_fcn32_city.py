@@ -34,18 +34,18 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 # Define the scale of the network to be trained
-fcn_scale = 'fcn16s'
+fcn_scale = 'fcn8s'
 params = {'num_classes': 20, 'rate': 1e-4,
           'tsboard_save_path': '../data/tsboard_result',
-          'trained_weight_path':'../data/city_fcn16_skip_new.npy',
+          'trained_weight_path':'../data/vgg16_new.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 5
-val_step = 2
+train_iter = 20000
+val_step = 500
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
@@ -88,15 +88,16 @@ with tf.Session() as sess:
             print('Training Loss: %f' % loss_value)
             
         # Save weight for validation
-        if i % val_step == 0:
+        if i >= val_step and i % val_step == 0:
             train_weight_dict = sess.run(var_dict_to_train)
             print('Saving trained weight after %d iterations... '%i)
             if len(train_weight_dict.keys()) != 0:
-                for key in weight_dict.keys():
-                    print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, weight_dict[key][0].shape, weight_dict[key][1].shape))
+                for key in train_weight_dict.keys():
+                    print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, train_weight_dict[key][0].shape, train_weight_dict[key][1].shape))
                 fname = 'city_%s_skip_%d.npy'%(fcn_scale,i)
-                np.save(npy_path, weight_dict)
-                print("trained weights saved: ", npy_path)
+		fpath = npy_path+fname
+                np.save(fpath, train_weight_dict)
+                print("trained weights saved: ", fpath)
     print('Finished training')
 
     
