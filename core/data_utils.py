@@ -90,3 +90,17 @@ vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')
 temp_weight_transform('./data/city_fcn32.npy','./data/city_fcn32_new.npy')
 temp_weight_transform('./data/city_fcn16_skip.npy','./data/city_fcn16_skip_new.npy')
 """
+"""
+path = './data/val_weights/fcn16s/city_fcn16s_skip_5000.npy'
+data_dict = load_weight(path)
+data_dict.pop('upscore_fr_32s')
+data_dict.pop('upscore_fr_2s')
+data_dict.pop('upscore_pool4_16s')
+print(data_dict.keys())
+np.save('./data/val_weights/fcn16s/city_fcn16s_skip_5000_new.npy', data_dict)
+
+
+path = './data/city_fcn16_skip_new.npy'
+data_dict = load_weight(path)
+print(data_dict.keys())
+"""

@@ -25,7 +25,7 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -44,8 +44,8 @@ params = {'num_classes': 20, 'rate': 1e-4,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 15000
-val_step = 3000
+train_iter = 10000
+val_step = 5000
 
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
