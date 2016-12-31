@@ -37,8 +37,8 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_12000.npy',
-          'pred_type_prefix':'_skip_12000_rand_'} # When saving predicting result, the prefix is
+          'trained_weight_path':'../data/val_weights/city_fcn32s_skip_10000.npy',
+          'pred_type_prefix':'_skip_10000_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
