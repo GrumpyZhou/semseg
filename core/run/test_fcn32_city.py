@@ -24,7 +24,7 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 import glob
 
-from ..eval import evalPixelSemantic
+from eval import evalPixelSemantic
 
 # Specify which GPU to use
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
