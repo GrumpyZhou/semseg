@@ -276,7 +276,7 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 	Evaluate for each pair of prediction and groundTruth in the respective lists.
 	'''
     if len(predictionImgList) != len(groundTruthImgList):
-        printError("List of images for prediction and groundtruth are not of equal size.")
+    	printError("List of images for prediction and groundtruth are not of equal size.")
     confMatrix    = generateMatrix(args)
     instStats     = generateInstanceStats(args)
     perImageStats = {}
