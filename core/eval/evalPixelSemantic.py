@@ -491,6 +491,7 @@ def run_eval():
         for gt in groundTruthImgList:
             predictionImgList.append( getPrediction(args,gt) )
 
+    print('load all resources done! Start evaluating ...')
     # evaluate
     evaluateImgLists(predictionImgList, groundTruthImgList, args)
 

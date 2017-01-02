@@ -24,6 +24,8 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 import glob
 
+from ..eval import evalPixelSemantic
+
 # Specify which GPU to use
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
@@ -74,6 +76,7 @@ with tf.Session() as sess:
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
     print("Inference done! Start transforming to colored ...")
     test_dataset.pred_to_color()
-    #print("Inference done! Start transforming to labelIDs ...")
-    #test_dataset.pred_to_labelID()
+    print("Inference done! Start transforming to labelIDs ...")
+    test_dataset.pred_to_labelID()
+    evalPixelSemantic.run_eval()
 
