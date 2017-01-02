@@ -72,7 +72,8 @@ def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_d
 def get_conv_kernel(feed_dict, feed_name, shape):
     if not feed_dict.has_key(feed_name):
         print("No matched kernel %s, randomly initialize the kernel with shape: %s " % (feed_name, str(shape)))
-        init = tf.truncated_normal_initializer(stddev=0.001, dtype=tf.float32)
+        init = tf.constant_initializer(value=0, dtype=tf.float32)
+	#init = tf.truncated_normal_initializer(stddev=0.001, dtype=tf.float32)
     else:
         kernel = feed_dict[feed_name][0]
         shape = kernel.shape

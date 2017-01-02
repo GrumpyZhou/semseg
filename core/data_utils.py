@@ -28,12 +28,14 @@ def vgg16_weight_transform(vgg16_path, vgg16_new_path):
     data_dict = load_weight(vgg16_path)
     # Remove weight of fc layers
     data_dict.pop('fc6', None)
-    data_dict.pop('fc7', None)
     data_dict.pop('fc8', None)
+    # Expand dimension of fc7 filter
+    data_dict['fc7'][0] = np.reshape(data_dict['fc7'][0],(1,1,4096,4096))
 
-    # Add conv6 layers using weight of conv5 layers
+    # Add conv6 layers using weight of conv5 layers and conv7
     dict_to_add = {'conv6_1': data_dict['conv5_1'],
-                   'conv6_2': data_dict['conv5_2']}
+                   'conv6_2': data_dict['conv5_2'],
+		   'conv7': data_dict.pop('fc7', None)}
     data_dict.update(dict_to_add)
     print('New keys:%s'%str(data_dict.keys()))
     # Save result
@@ -85,8 +87,28 @@ dt = CityDataSet(data_config)
 print(img.shape,' ',lbl==None)
 '''
 
+
+#vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')
 """
-vgg16_weight_transform('./data/vgg16.npy', './data/vgg16_new.npy')
 temp_weight_transform('./data/city_fcn32.npy','./data/city_fcn32_new.npy')
 temp_weight_transform('./data/city_fcn16_skip.npy','./data/city_fcn16_skip_new.npy')
+"""
+"""
+path = './data/val_weights/city_fcn32s_skip_10000.npy'
+data_dict = load_weight(path)
+data_dict.pop('upscore_fr_32s')
+#data_dict.pop('upscore_fr_2s')
+#data_dict.pop('upscore_pool4_16s')
+print(data_dict.keys())
+#np.save('./data/val_weights/city_fcn32s_skip_10000_new.npy', data_dict)
+
+path = './data/vgg16_new.npy'
+data_dict = load_weight(path)
+for x in data_dict.keys():
+    print(data_dict[x][0].shape)
+print(data_dict.keys())
+
+path = './data/vgg16.npy'
+data_dict = load_weight(path)
+print(data_dict.keys())
 """
