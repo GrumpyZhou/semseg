@@ -275,15 +275,15 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 	'''
 	Evaluate for each pair of prediction and groundTruth in the respective lists.
 	'''
-    if len(predictionImgList) != len(groundTruthImgList):
-    	printError("List of images for prediction and groundtruth are not of equal size.")
-    confMatrix    = generateMatrix(args)
-    instStats     = generateInstanceStats(args)
-    perImageStats = {}
-    nbPixels      = 0
+	if len(predictionImgList) != len(groundTruthImgList):
+		printError("List of images for prediction and groundtruth are not of equal size.")
+	confMatrix    = generateMatrix(args)
+	instStats     = generateInstanceStats(args)
+	perImageStats = {}
+	nbPixels      = 0
 
-    if not args.quiet:
-        print("Evaluating {} pairs of images...".format(len(predictionImgList)))
+	if not args.quiet:
+		print("Evaluating {} pairs of images...".format(len(predictionImgList)))
 
     # Evaluate all pairs of images and save them into a matrix
     for i in range(len(predictionImgList)):
