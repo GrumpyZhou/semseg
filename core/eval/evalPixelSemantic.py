@@ -374,7 +374,7 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 
     # return confusion matrix
     # return allResultsDict
-    return None
+	return None
 
 # Main evaluation method. Evaluates pairs of prediction and ground truth
 # images which are passed as arguments.
@@ -476,7 +476,7 @@ def evaluatePair(predictionImgFileName, groundTruthImgFileName, confMatrix, inst
 		perImageStats[predictionImgFileName]["nbNotIgnoredPixels"] = np.count_nonzero(notIgnoredPixels)
 		perImageStats[predictionImgFileName]["nbCorrectPixels"]    = np.count_nonzero(erroneousPixels)
 
-    return nbPixels
+	return nbPixels
 
 def run_eval():
 	global args
