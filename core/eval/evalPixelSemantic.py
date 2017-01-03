@@ -25,7 +25,7 @@ try:
 except ImportError:
     izip = zip
 
-from csHelpers import *
+from eval.csHelpers import *
 
 CSUPPORT = True
 if CSUPPORT:
