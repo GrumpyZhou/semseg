@@ -24,6 +24,7 @@ try:
     from itertools import izip
 except ImportError:
     izip = zip
+
 from csHelpers import *
 
 CSUPPORT = True
