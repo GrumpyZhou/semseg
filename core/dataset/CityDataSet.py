@@ -251,6 +251,10 @@ class CityDataSet():
             ### Otherwise, comment this line.
             fname = output_img.split('_')
             replaced_part = fname[0] + '_' + fname[1] + '_' + fname[2] + '_'
+            print('fname0: %s'%fname[0])
+            print('fname1: %s'%fname[1])
+            print('fname2: %s'%fname[2])
+            print('replaced_part: %s'%replaced_part)
             output_img = output_img.replace(replaced_part, '')
             imsave(output_img, image)
             print("LabelIDs prediction saved to %s"%output_img)
