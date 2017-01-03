@@ -35,8 +35,10 @@ if CSUPPORT:
         CSUPPORT = False
 
 os.environ['CITYSCAPES_DATASET'] = '../data/CityDatabase'
-# To specify where the ground truth
+# To specify where the predictions are
 os.environ['CITYSCAPES_RESULTS'] = '../data/test_city_labelIDs'
+# To specify where the ground truth are
+os.environ['CITYSCAPES_GROUNDTRUTH'] = '../data/test_city_gt'
 
 
 ###################
@@ -54,7 +56,10 @@ else:
 	print('No dataset path specified, use default path: {}'.format('../data/CityDatabase'))
 	args.cityscapesPath = '../data/CityDatabase'
 
-args.groundTruthSearch  = os.path.join( args.cityscapesPath , "gtFine" , "val" , "*", "*_gtFine_labelIds.png" )
+if 'CITYSCAPES_GROUNDTRUTH' in os.environ:
+	args.groundTruthSearch = os.path.join(os.environ['CITYSCAPES_GROUNDTRUTH'], "*_gtFine_labelIds.png")
+else:
+	args.groundTruthSearch  = os.path.join( args.cityscapesPath , "gtFine" , "val" , "*", "*_gtFine_labelIds.png" )
 
 
 args.evalInstLevelScore = False
