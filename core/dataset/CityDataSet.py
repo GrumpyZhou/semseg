@@ -249,7 +249,9 @@ class CityDataSet():
 
             ### If want to submit to cityscape challenge, then use this line to rename;
             ### Otherwise, comment this line.
-            output_img = output_img.replace('fcn16s_skiptest_', '')
+            fname = output_img.split('_')
+            replaced_part = fname[0] + '_' + fname[1] + '_' + fname[2] + '_'
+            output_img = output_img.replace(replaced_part, '')
             imsave(output_img, image)
             print("LabelIDs prediction saved to %s"%output_img)
 
