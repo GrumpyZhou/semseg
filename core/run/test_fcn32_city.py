@@ -70,13 +70,15 @@ with tf.Session() as sess:
         feed_dict = {image: next_pair_image}
 
         predict = sess.run(predict_, feed_dict=feed_dict)
+        prefix_dict = []
         for key in option.keys():
             if option[key]:
                 fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
+                prefix_dict.append(fname_prefix)
                 test_dataset.save_trainID_img(fname_prefix, predict[key])
     print("Inference done! Start transforming to colored ...")
     test_dataset.pred_to_color()
     print("Inference done! Start transforming to labelIDs ...")
-    test_dataset.pred_to_labelID()
+    test_dataset.pred_to_labelID(prefix_dict)
     evalPixelSemantic.run_eval()
 
