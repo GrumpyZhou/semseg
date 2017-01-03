@@ -488,8 +488,8 @@ def run_eval():
 	if not groundTruthImgList:
 		printError("Cannot find any ground truth images to use for evaluation. Searched for: {}".format(args.groundTruthSearch))
 	    # get the corresponding prediction for each ground truth imag
-	    for gt in groundTruthImgList:
-	        predictionImgList.append( getPrediction(args,gt) )
+		for gt in groundTruthImgList:
+			predictionImgList.append( getPrediction(args,gt) )
 
 	print('load all resources done! Start evaluating ...')
 	# evaluate
