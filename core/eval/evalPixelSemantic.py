@@ -410,9 +410,9 @@ def evaluatePair(predictionImgFileName, groundTruthImgFileName, confMatrix, inst
 	if ( len(predictionNp.shape) != 2 ):
 		printError("Predicted image has multiple channels.")
 
-    imgWidth  = predictionImg.size[0]
-    imgHeight = predictionImg.size[1]
-    nbPixels  = imgWidth*imgHeight
+	imgWidth  = predictionImg.size[0]
+	imgHeight = predictionImg.size[1]
+	nbPixels  = imgWidth*imgHeight
 
     # Evaluate images
 	if (CSUPPORT):
