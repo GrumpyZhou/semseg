@@ -482,20 +482,20 @@ def run_eval():
 	global args
 
 	predictionImgList = []
-    groundTruthImgList = []
+	groundTruthImgList = []
 
-    groundTruthImgList = glob.glob(args.groundTruthSearch)
+	groundTruthImgList = glob.glob(args.groundTruthSearch)
 	if not groundTruthImgList:
 		printError("Cannot find any ground truth images to use for evaluation. Searched for: {}".format(args.groundTruthSearch))
 	    # get the corresponding prediction for each ground truth imag
 	    for gt in groundTruthImgList:
 	        predictionImgList.append( getPrediction(args,gt) )
 
-    print('load all resources done! Start evaluating ...')
-    # evaluate
-    evaluateImgLists(predictionImgList, groundTruthImgList, args)
+	print('load all resources done! Start evaluating ...')
+	# evaluate
+	evaluateImgLists(predictionImgList, groundTruthImgList, args)
 
-    print('evaluation done!')
+	print('evaluation done!')
 
 
 
