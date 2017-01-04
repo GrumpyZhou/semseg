@@ -144,6 +144,7 @@ def generateMatrix(args):
     # We use longlong type to be sure that there are no overflows
     return np.zeros(shape=(maxId+1, maxId+1),dtype=np.ulonglong)
 
+'''
 def generateInstanceStats(args):
     instanceStats = {}
     instanceStats["classes"   ] = {}
@@ -176,6 +177,7 @@ def generateInstanceStats(args):
         instanceStats["categories"][category]["labelIds"] = labelIds
 
     return instanceStats
+'''
 
 # Calculate and return IOU score for a particular label
 def getIouScoreForLabel(label, confMatrix, args):
@@ -284,9 +286,11 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 	if len(predictionImgList) != len(groundTruthImgList):
 		printError("List of images for prediction and groundtruth are not of equal size.")
 	confMatrix    = generateMatrix(args)
-	instStats     = generateInstanceStats(args)
+	instStats = None
 	perImageStats = {}
 	nbPixels      = 0
+	if args.evalInstLevelScore:
+		instStats = generateInstanceStats(args)
 
 	if not args.quiet:
 		print("Evaluating {} pairs of images...".format(len(predictionImgList)))
