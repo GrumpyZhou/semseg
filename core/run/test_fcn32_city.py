@@ -33,7 +33,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
-                     'dataset':'test',
+                     'dataset':'val',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
