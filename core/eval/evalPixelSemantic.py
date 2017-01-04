@@ -499,6 +499,8 @@ def run_eval():
 
 	print('load all resources done! Start evaluating ...')
 	# evaluate
+	print('list of predictions: ', predictionImgList)
+	print('list of truth: ', groundTruthImgList)
 	evaluateImgLists(predictionImgList, groundTruthImgList, args)
 
 	print('evaluation done!')
