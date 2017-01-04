@@ -27,7 +27,7 @@ except ImportError:
 
 from eval.csHelpers import *
 
-CSUPPORT = False
+CSUPPORT = True
 if CSUPPORT:
     try:
         import addToConfusionMatrix
@@ -182,6 +182,7 @@ def generateInstanceStats(args):
 # Calculate and return IOU score for a particular label
 def getIouScoreForLabel(label, confMatrix, args):
     if id2label[label].ignoreInEval:
+    	print('label %s is ignored.'%label)
         return float('nan')
 
     # the number of true positive pixels for this label
@@ -203,6 +204,7 @@ def getIouScoreForLabel(label, confMatrix, args):
     # the denominator of the IOU score
     denom = (tp + fp + fn)
     if denom == 0:
+    	print('label %s denom is 0.'%label)
         return float('nan')
 
     # return IOU
@@ -247,6 +249,7 @@ def getScoreAverage(scoreList, args):
             validScores += 1
             scoreSum += scoreList[score]
     if validScores == 0:
+    	print('getAverage: valid score is 0.')
         return float('nan')
     return scoreSum / validScores
 
