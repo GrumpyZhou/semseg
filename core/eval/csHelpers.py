@@ -85,6 +85,7 @@ labels = [
     Label(  'bicycle'              , 33 ,       18 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
     Label(  'license plate'        , -1 ,       19 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
+id2label = { label.id      : label for label in labels           }
 
 
 # Print an error message and quit
