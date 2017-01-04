@@ -27,7 +27,7 @@ except ImportError:
 
 from eval.csHelpers import *
 
-CSUPPORT = True
+CSUPPORT = False
 if CSUPPORT:
     try:
         import addToConfusionMatrix
