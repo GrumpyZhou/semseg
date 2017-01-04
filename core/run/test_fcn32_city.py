@@ -27,7 +27,7 @@ import glob
 from eval import evalPixelSemantic
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
