@@ -505,7 +505,6 @@ def evaluatePair(predictionImgFileName, groundTruthImgFileName, confMatrix, inst
 		perImageStats[predictionImgFileName] = {}
 		perImageStats[predictionImgFileName]["nbNotIgnoredPixels"] = np.count_nonzero(notIgnoredPixels)
 		perImageStats[predictionImgFileName]["nbCorrectPixels"]    = np.count_nonzero(erroneousPixels)
-		print('Accuracy of {} is {}.'.format(predictionImgFileName,perImageStats[predictionImgFileName]))
 
 	return nbPixels
 
