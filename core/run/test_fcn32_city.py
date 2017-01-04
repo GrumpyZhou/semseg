@@ -54,7 +54,7 @@ with tf.Session() as sess:
     # Build fcn32 model
     option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
-                                    scale_min='fcn32s', option=option)
+                                    scale_min='fcn16s', option=option)
 
     predict = {}
     accuracy = 0.0
