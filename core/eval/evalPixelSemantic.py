@@ -328,6 +328,11 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 		labelName = id2label[label].name
 		classScoreList[labelName] = getIouScoreForLabel(label, confMatrix, args)
 
+	for labelname in classScoreList:
+		print('Score of {}: {}'.format(labelname,classScoreList[labelname]))
+
+	avgScore = getScoreAverage(classScoreList, args)
+	print('The average score is {}'.format(avgScore))
 
     # Calculate instance IOU scores on class level from matrix
 	'''
