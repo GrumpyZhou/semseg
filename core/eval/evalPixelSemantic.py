@@ -12,6 +12,13 @@ Support scripts needed:
  NOTE:
   - specify environment variables before evaluation
   CITYSCAPES_DATASET, CITYSCAPES_RESULTS
+
+ USAGE:
+  - Put all ground truth files in :
+  	os.environ['CITYSCAPES_GROUNDTRUTH']
+  - Put all prediction files in:
+  	os.environ['CITYSCAPES_RESULTS']
+  - The #prediction files and #groundtruth MUST be the same.
 '''
 from __future__ import absolute_import
 from __future__ import division
@@ -72,6 +79,7 @@ args.bold               = colors.BOLD if args.colorized else ""
 args.nocol              = colors.ENDC if args.colorized else ""
 args.JSONOutput         = True
 args.quiet              = False
+args.debug				= False
 
 args.avgClassSize       = {
     "bicycle"    :  4672.3249222261 ,
@@ -127,8 +135,9 @@ def getPrediction( args, groundTruthFile ):
     if not predictionFile:
         printError("Found no prediction for ground truth {}".format(groundTruthFile))
 
-    print("Got the ground truth file: %s"%groundTruthFile)
-    print("Got the prediction file: %s"%predictionFile)
+    if args.debug:
+		print("Got the ground truth file: %s"%groundTruthFile)
+		print("Got the prediction file: %s"%predictionFile)
 
     return predictionFile
 
@@ -182,7 +191,8 @@ def generateInstanceStats(args):
 # Calculate and return IOU score for a particular label
 def getIouScoreForLabel(label, confMatrix, args):
     if id2label[label].ignoreInEval:
-    	print('label %s is ignored.'%label)
+    	if args.debug:
+    		print('label %s is ignored.'%label)
         return float('nan')
 
     # the number of true positive pixels for this label
@@ -204,7 +214,8 @@ def getIouScoreForLabel(label, confMatrix, args):
     # the denominator of the IOU score
     denom = (tp + fp + fn)
     if denom == 0:
-    	print('label %s denom is 0.'%label)
+    	if args.debug:
+    		print('label %s denom is 0.'%label)
         return float('nan')
 
     # return IOU
@@ -331,8 +342,9 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 		labelName = id2label[label].name
 		classScoreList[labelName] = getIouScoreForLabel(label, confMatrix, args)
 
-	for labelname in classScoreList:
-		print('Score of {}: {}'.format(labelname,classScoreList[labelname]))
+	if args.debug:
+		for labelname in classScoreList:
+			print('Score of {}: {}'.format(labelname,classScoreList[labelname]))
 
 	avgScore = getScoreAverage(classScoreList, args)
 	print('The average score is {}'.format(avgScore))
@@ -392,7 +404,7 @@ def evaluateImgLists(predictionImgList, groundTruthImgList, args):
 
     # return confusion matrix
     # return allResultsDict
-	return None
+	return avgScore
 
 # Main evaluation method. Evaluates pairs of prediction and ground truth
 # images which are passed as arguments.
@@ -502,6 +514,7 @@ def run_eval():
 
 	predictionImgList = []
 	groundTruthImgList = []
+	avgScore = 0.0
 
 	groundTruthImgList = glob.glob(args.groundTruthSearch)
 	if not groundTruthImgList:
@@ -514,9 +527,11 @@ def run_eval():
 	# evaluate
 	print('list of predictions: ', predictionImgList)
 	print('list of truth: ', groundTruthImgList)
-	evaluateImgLists(predictionImgList, groundTruthImgList, args)
+	avgScore = evaluateImgLists(predictionImgList, groundTruthImgList, args)
 
 	print('evaluation done!')
+
+	return avgScore
 
 
 
