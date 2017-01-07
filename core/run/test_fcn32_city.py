@@ -83,5 +83,5 @@ with tf.Session() as sess:
     test_dataset.pred_to_labelID(prefix_dict)
     # return averageScore over all tested images, data type: float
     # Usage: see evalPixelSemantic.py
-    accuracy = evalPixelSemantic.run_eval()
+    # accuracy = evalPixelSemantic.run_eval()
 
