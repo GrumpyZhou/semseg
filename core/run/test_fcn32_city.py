@@ -27,24 +27,24 @@ import glob
 from eval import evalPixelSemantic
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
-                     'dataset':'val',
+                     'dataset':'test',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/val_weights/city_fcn16s_skip_5000.npy',
+          'trained_weight_path':'../data/city_fcn16s_skip_5000.npy',
           'pred_type_prefix':'_skip_5000_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 2
+iterations = 1525
 
 with tf.Session() as sess:
     # Init model and load approriate weights-data
