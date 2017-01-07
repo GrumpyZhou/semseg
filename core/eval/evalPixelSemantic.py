@@ -3,10 +3,11 @@ The script is to evaluate pixel level semantic labeling.
 Support scripts needed:
  - addToConfusionMatrix.pyx
  - addToConfusionMatrix_impl.c
+ - addToConfusionMatrix.c
  - csHelpers.py
  - setup.py
 
- NOTE: enable cython before running evaluation:
+ NOTE: enable cython before running evaluation(already enabled on server):
  setup.py build_ext --inplace
 
  NOTE:
@@ -14,11 +15,13 @@ Support scripts needed:
   CITYSCAPES_DATASET, CITYSCAPES_RESULTS
 
  USAGE:
-  - Put all ground truth files in :
+  - Put all ground truth files (validation groundtruth - <city>_123456_123456_gtFine_labelIds.png ) in :
   	os.environ['CITYSCAPES_GROUNDTRUTH']
-  - Put all prediction files in:
+  - Put all prediction files (validation predictions - <city>_123456_123456*.png ) in:
   	os.environ['CITYSCAPES_RESULTS']
-  - The #prediction files and #groundtruth MUST be the same.
+  - The number of prediction files and number of groundtruth MUST be the same.
+  - The evaluation method reads prediction results in os.environ['CITYSCAPES_RESULTS']
+    and groundtruth files in os.environ['CITYSCAPES_GROUNDTRUTH'] to Calculate accuracy.
 '''
 from __future__ import absolute_import
 from __future__ import division
