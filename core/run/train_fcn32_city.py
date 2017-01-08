@@ -34,8 +34,8 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 # Define the scale of the network to be trained
-fcn_scale = 'fcn8s'
-params = {'num_classes': 20, 'rate': 1e-4,
+fcn_scale = 'fcn32s'
+params = {'num_classes': 20, 'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
           'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_10000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
@@ -44,7 +44,7 @@ params = {'num_classes': 20, 'rate': 1e-4,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 20000
+train_iter = 50000
 val_step = 5000
 
 with tf.Session() as sess:
