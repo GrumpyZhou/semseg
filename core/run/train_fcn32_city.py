@@ -25,7 +25,7 @@ from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -34,17 +34,17 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 # Define the scale of the network to be trained
-fcn_scale = 'fcn32s'
+fcn_scale = 'fcn16s'
 params = {'num_classes': 20, 'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
-          'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_10000.npy',
+          'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_50000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 50000
+train_iter = 30000
 val_step = 5000
 
 with tf.Session() as sess:
