@@ -37,16 +37,18 @@ train_data_config = {'city_dir':"../data/CityDatabase",
 fcn_scale = 'fcn32s'
 params = {'num_classes': 20, 'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
-          'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_50000.npy',
+          'trained_weight_path':'../data/val_weights/fcn32s/city_fcn32s_skip_80000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 30000
+train_iter = 50000
 val_step = 5000
 
+# Logging config
+print('Training config: fcn_scale %s, iters %d'%(fcn_scale, train_iter))
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
     fcn = FCN16VGG(params['trained_weight_path'])
