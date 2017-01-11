@@ -183,7 +183,7 @@ class CityDataSet():
             img_inx = img_inx.replace('trainIDs', 'colored')
             save_color_path = self.colored_save_path + '/' + img_inx
             imsave(save_color_path, pred)
-            print('Colored prediction saved to %s '%save_color_path)
+            #print('Colored prediction saved to %s '%save_color_path)
 
         return None
 
@@ -215,7 +215,7 @@ class CityDataSet():
         pred_in = np.reshape(pred_in, (pred_in.shape[1], pred_in.shape[2]))
         # Save .png, don't rescale
         toimage(pred_in, high=19, low=0, cmin=0, cmax=19).save(save_path)
-        print("TrainIDs prediction saved to %s "%save_path)
+        #print("TrainIDs prediction saved to %s "%save_path)
 
 
     def pred_to_labelID(self, prefix):
@@ -231,7 +231,7 @@ class CityDataSet():
         files_img = glob.glob(search_path)
         files_img.sort()
 
-        print("TrainIDs prediction has %d images."%len(files_img))
+        #print("TrainIDs prediction has %d images."%len(files_img))
         for idx in range(len(files_img)):
             img = imread(files_img[idx])
             H = img.shape[0]
@@ -252,7 +252,7 @@ class CityDataSet():
             for replace in prefix:
                 output_img = output_img.replace(replace, '')
             imsave(output_img, image)
-            print("LabelIDs prediction saved to %s"%output_img)
+            #print("LabelIDs prediction saved to %s"%output_img)
 
 
 # Test example
