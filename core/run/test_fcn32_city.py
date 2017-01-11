@@ -27,34 +27,36 @@ import glob
 from eval import evalPixelSemantic
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
-                     'dataset':'test',
+                     'dataset':'val',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/city_fcn16s_skip_5000.npy',
-          'pred_type_prefix':'_skip_5000_'} # When saving predicting result, the prefix is
+          'trained_weight_path':'../data/val_weights/city_fcn32s_skip_10000.npy',
+          'pred_type_prefix':'_skip_10000_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 1525
+iterations = 500
 
+# For logging 
+print('Validation weight:%s \n'%params['trained_weight_path'])
 with tf.Session() as sess:
     # Init model and load approriate weights-data
     vgg_fcn32s = FCN16VGG(params['trained_weight_path'])
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}
+    option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
-                                    scale_min='fcn16s', option=option)
+                                    scale_min='fcn32s', option=option)
 
     predict = {}
     accuracy = 0.0
@@ -64,7 +66,7 @@ with tf.Session() as sess:
 
     print('Running the inference ...')
     for i in range(iterations):
-        print("iter:", i)
+        #print("iter:", i)
         # Load data, Already converted to BGR
         next_pair = test_dataset.next_batch()
         next_pair_image = next_pair[0]
@@ -83,5 +85,6 @@ with tf.Session() as sess:
     test_dataset.pred_to_labelID(prefix_dict)
     # return averageScore over all tested images, data type: float
     # Usage: see evalPixelSemantic.py
-    # accuracy = evalPixelSemantic.run_eval()
+    accuracy = evalPixelSemantic.run_eval(test_data_config['labelIDs_save_path'])
+
 
