@@ -48,7 +48,7 @@ os.environ['CITYSCAPES_DATASET'] = '../data/CityDatabase'
 # To specify where the predictions are
 os.environ['CITYSCAPES_RESULTS'] = '../data/test_city_labelIDs'
 # To specify where the ground truth are
-os.environ['CITYSCAPES_GROUNDTRUTH'] = '../data/test_city_gt'
+# os.environ['CITYSCAPES_GROUNDTRUTH'] = '../data/test_city_gt'
 
 
 ###################
@@ -511,9 +511,10 @@ def evaluatePair(predictionImgFileName, groundTruthImgFileName, confMatrix, inst
 
 	return nbPixels
 
-def run_eval():
+def run_eval(resultPath):
 	global args
-
+	
+	args.predictionPath = resultPath
 	predictionImgList = []
 	groundTruthImgList = []
 	avgScore = 0.0
@@ -523,17 +524,17 @@ def run_eval():
 		printError("Cannot find any ground truth images to use for evaluation. Searched for: {}".format(args.groundTruthSearch))
 	    # get the corresponding prediction for each ground truth imag
 	for gt in groundTruthImgList:
-		predictionImgList.append( getPrediction(args,gt) )
+		predictionImgList.append( getPrediction(args, gt) )
 
 	print('load all resources done! Start evaluating ...')
 	# evaluate
-	print('list of predictions: ', predictionImgList)
-	print('list of truth: ', groundTruthImgList)
+	#print('list of predictions: ', predictionImgList)
+	#print('list of truth: ', groundTruthImgList)
+	print('predictions %d truth %d: '%(len(predictionImgList), len(groundTruthImgList)))
 	avgScore = evaluateImgLists(predictionImgList, groundTruthImgList, args)
 
 	print('evaluation done!')
 
 	return avgScore
-
 
 
