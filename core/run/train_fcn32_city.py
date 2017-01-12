@@ -34,18 +34,18 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 # Define the scale of the network to be trained
-fcn_scale = 'fcn16s'
+fcn_scale = 'fcn8s'
 params = {'num_classes': 20, 'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
-          'trained_weight_path':'../data/val_weights/fcn16s/city_fcn16s_skip_30000.npy',
+          'trained_weight_path':'../data/val_weights/fcn16s/city_fcn16s_skip_80000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 50000
-val_step = 5000
+train_iter = 100000
+val_step = 10000
 
 # Logging config
 print('Training config: fcn_scale %s, iters %d'%(fcn_scale, train_iter))
