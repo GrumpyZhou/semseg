@@ -39,7 +39,7 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'labelIDs_save_path': '../data/test_city_labelIDs_1'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/val_weights/city_fcn16s_skip_10000.npy',
+          'trained_weight_path':'../data/val_weights/city_fcn16s_skip_50000.npy',
           'pred_type_prefix':'_skip_10000_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 print('Validate weight %s'%params['trained_weight_path'])
@@ -65,7 +65,6 @@ with tf.Session() as sess:
 
     print('Running the inference ...')
     for i in range(iterations):
-        print("iter:", i)
         # Load data, Already converted to BGR
         next_pair = test_dataset.next_batch()
         next_pair_image = next_pair[0]

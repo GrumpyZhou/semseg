@@ -27,24 +27,24 @@ import glob
 from eval import evalPixelSemantic
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
-                     'dataset':'val',
+                     'dataset':'test',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'rate': 1e-4,
-          'trained_weight_path':'../data/val_weights/city_fcn32s_skip_10000.npy',
+          'trained_weight_path':'../data/val_weights/city_fcn8s_skip_100000.npy',
           'pred_type_prefix':'_skip_10000_'} # When saving predicting result, the prefix is
                                        # concatenated into the file name
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 500
+iterations = 1525
 
 # For logging 
 print('Validation weight:%s \n'%params['trained_weight_path'])
@@ -54,9 +54,9 @@ with tf.Session() as sess:
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn32 model
-    option={'fcn32s':True, 'fcn16s':False, 'fcn8s':False}
+    option={'fcn32s':False, 'fcn16s':False, 'fcn8s':True}
     predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
-                                    scale_min='fcn32s', option=option)
+                                    scale_min='fcn8s', option=option)
 
     predict = {}
     accuracy = 0.0
