@@ -1,6 +1,5 @@
-CityDatabase/
-test_city/
-test_img/
+data/
+log/
 VOC2012/
 **.tar
 **.py.swo
