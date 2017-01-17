@@ -17,7 +17,7 @@ import data_utils as dt
 
 DATA_DIR = 'data'
 
-class FCN16VGG:
+class InstanceSegNet:
 
     def __init__(self, data_path=None):
         # Load pretrained weight
@@ -44,6 +44,8 @@ class FCN16VGG:
             # During inference or validation, no need to save weights
             var_dict = None
 
+
+        # Step1: build fcn8s and score_out which has shape[H, W, Classes] 
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2", var_dict=var_dict)
         model['pool1'] = nn.max_pool_layer(model['conv1_2'], "pool1")
@@ -87,51 +89,42 @@ class FCN16VGG:
         model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr", 
                                           shape=[1, 1, 4096, num_classes], relu=False, 
                                           dropout=False, var_dict=var_dict)
+        
+        # Upsample: score_fr*2
+        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s",
+                                       tf.shape(model['pool4']), num_classes,
+                                       ksize=4, stride=2, var_dict=var_dict)
+        # Fuse upscore_fr_2s + score_pool4
+        in_features = model['pool4'].get_shape()[3].value
+        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4", 
+                                    shape=[1, 1, in_features, num_classes], 
+                                    relu=False, dropout=False, var_dict=var_dict)
+        
+        fuse_pool4 = tf.add(upscore_fr_2s, score_pool4)
 
-        # fcn32s is always calculated for now
-        model['fcn32s'] = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_32s", 
-                                           tf.shape(image), num_classes,ksize=64, 
-                                           stride=32, var_dict=var_dict)
+                  
+        # Upsample fuse_pool4*2
+        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s",
+                                            tf.shape(model['pool3']), num_classes,
+                                            ksize=4, stride=2, var_dict=var_dict)
 
-        # fcn16s is calculated also when scale_min is *8, because we need to calculate fuse_pool4 anyway
-        if scale_min == 'fcn16s' or scale_min == 'fcn8s':
-            upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s",
-                                           tf.shape(model['pool4']), num_classes,
-                                           ksize=4, stride=2, var_dict=var_dict)
- 
-            # Fuse fc8 *2, pool4
-            in_features = model['pool4'].get_shape()[3].value
-            score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4", 
-                                        shape=[1, 1, in_features, num_classes], 
-                                        relu=False, dropout=False, var_dict=var_dict)
-            
-            fuse_pool4 = tf.add(upscore_fr_2s, score_pool4)
+        # Fuse  upscore_pool4_2s + score_pool3            
+        in_features = model['pool3'].get_shape()[3].value
+        score_pool3 = nn.conv_layer(model['pool3'], self.data_dict, "score_pool3", 
+                                    shape=[1, 1, in_features, num_classes], 
+                                    relu=False, dropout=False, var_dict=var_dict)
 
-            # Upsample fusion *16
-            model['fcn16s'] = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_16s",
-                                               tf.shape(image), num_classes,
-                                               ksize=32, stride=16, var_dict=var_dict)
-            
-        # fcn8s is calculated only when scale_min is *8
-        if scale_min == 'fcn8s':
-            # Upsample fc8 *4
-            upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s",
-                                                tf.shape(model['pool3']), num_classes,
-                                                ksize=4, stride=2, var_dict=var_dict)
+        score_out = tf.add(upscore_pool4_2s, score_pool3)
 
-            # Fuse fc8 *4, pool4 *2, pool3            
-            in_features = model['pool3'].get_shape()[3].value
-            score_pool3 = nn.conv_layer(model['pool3'], self.data_dict, "score_pool3", 
-                                        shape=[1, 1, in_features, num_classes], 
-                                        relu=False, dropout=False, var_dict=var_dict)
+        # Conv score_out to masks which has shape [H, W, Num_Masks]
+        num_masks = 40
+        masks = nn.mask_layer(score_out, feed_dict, "masks", 
+                                          shape=[3, 3, num_classes, num_masks], relu=False, 
+                                          dropout=False, var_dict=var_dict)
 
-            fuse_pool3 = tf.add(score_pool3, upscore_pool4_2s)
 
-            # Upsample fusion *8
-            model['fcn8s'] = nn.upscore_layer(fuse_pool3, feed_dict, "upscore8",
-                                              tf.shape(image), num_classes,
-                                              ksize=16, stride=8, var_dict=var_dict)
-         
+
+     
         #self.var_dict = var_dict
         print('Model with scale %s is builded successfully!' % scale_min)
         print('Model: %s' % str(model.keys()))
@@ -167,13 +160,4 @@ class FCN16VGG:
 
         return train_step, loss
 
-    def validate(self, image, truth, num_classes, scale_min='fcn16s'):
-        # Build validation model
-        model = self._build_model(image, num_classes, is_train=False, scale_min=scale_min, val_dict = self.var_dict)
-        upscored = model[scale_min]
-        old_shape = tf.shape(upscored)
-        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
-        prediction = tf.reshape(upscored, new_shape)
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
-        
-        return loss
+    

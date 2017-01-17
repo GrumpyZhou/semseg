@@ -39,6 +39,32 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
 
     return conv_out
 
+def mask_layer(x, name, shape, stride=1, relu=False, dropout=False, keep_prob=0.5, var_dict=None):
+
+    with tf.variable_scope(name) as scope:
+        print('Layer name: %s' % name)  
+        #[filter_height, filter_width, num_classes, max_instance]
+     
+        kernel = get_mask_conv_kernel(feed_dict, name, shape)
+        bias = get_bias(feed_dict, name, shape)
+
+        conv = tf.nn.depthwise_conv2d(x, kernel,
+                            strides=[1, stride, stride, 1],
+                            padding='SAME')
+        conv_out = tf.nn.bias_add(conv, bias) 
+            
+        if relu:
+            conv_out =  tf.nn.relu(conv_out)
+        if dropout:
+            conv_out = tf.nn.dropout(conv_out, keep_prob)
+
+    if var_dict is not None:
+        var_dict[name] = (kernel, bias)
+
+    return conv_out
+
+
+
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
 def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_dict=None):
     strides = [1, stride, stride, 1]
@@ -68,6 +94,19 @@ def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_d
         var_dict[name] = (kernel)
 
     return deconv
+
+def get_mask_conv_kernel(feed_dict, feed_name, shape):
+    if not feed_dict.has_key(feed_name):
+        print("No matched kernel %s, randomly initialize the kernel with shape: %s " % (feed_name, str(shape)))
+        init = tf.constant_initializer(value=0, dtype=tf.float32)
+    else:
+        kernel = feed_dict[feed_name][0]
+        shape = kernel.shape
+        print('Load kernel with shape: %s' % str(shape))
+        init = tf.constant_initializer(value=kernel,dtype=tf.float32)
+    var = tf.get_variable(name="kernel", initializer=init, shape=shape)
+    return var
+
 
 def get_conv_kernel(feed_dict, feed_name, shape):
     if not feed_dict.has_key(feed_name):
