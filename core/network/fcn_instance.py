@@ -17,17 +17,23 @@ import data_utils as dt
 
 DATA_DIR = 'data'
 
-class InstanceSegNet:
+class InstanceFCN8s:
 
-    def __init__(self, data_path=None):
+    def __init__(self, data_path=None, target_class={11:'person', 13:'car'}):
+        # Define classes to be segmented to instance level e.g {11:'person', 13:'car'}
+        target_class = target_class 
+        num_selected = len(target_class)
+        
+        
         # Load pretrained weight
         data_dict = dt.load_weight(data_path)
         self.data_dict = data_dict
 
         # used to save trained weights
         self.var_dict = {}
+        
 
-    def _build_model(self, image, num_classes, is_train=False, scale_min='fcn16s', save_var=False, val_dict=None):
+    def _build_model(self, image, num_classes, max_instance, is_train=False, save_var=False, val_dict=None):
         
         model = {}
         if val_dict is None:
@@ -115,49 +121,76 @@ class InstanceSegNet:
                                     relu=False, dropout=False, var_dict=var_dict)
 
         score_out = tf.add(upscore_pool4_2s, score_pool3)
+        
+        # Select the designated classes e.g car and person
+        sub_score = []
+        shape = tf.shape(score_out)
+        for id in sorted(self.target_class.keys):
+            print('slicing %d'%id)
+            sub_score.append(tf.slice(w, [0, 0, id], [shape[0], shape[1], 1]))
 
-        # Conv score_out to masks which has shape [H, W, Num_Masks]
-        num_masks = 40
-        masks = nn.mask_layer(score_out, feed_dict, "masks", 
-                                          shape=[3, 3, num_classes, num_masks], relu=False, 
-                                          dropout=False, var_dict=var_dict)
+        model['semantic_mask'] = tf.concat(2, sub_score)
+        
+        # Convolve semantic_mask to several stacks of instance masks, each having shape [h, w, max_instance]
+        model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_mask", 
+                              shape=[3, 3, self.num_selected, max_instance], 
+                              relu=False, dropout=False, var_dict=var_dict)
 
+        # Upsample to original size *8 
+        model['upmask'] = nn.upscore_layer(model['instance_mask'], feed_dict, 
+                                  "upmask", tf.shape(image), self.num_selected,
+                                  ksize=16, stride=8, var_dict=var_dict)
 
-
-     
-        #self.var_dict = var_dict
-        print('Model with scale %s is builded successfully!' % scale_min)
+        print('InstanceSegNet model is builded successfully!')
         print('Model: %s' % str(model.keys()))
         return model
 
-    def inference(self, image, num_classes, scale_min='fcn16s', option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}):
-        # Build model
-        model = self._build_model(image, num_classes, is_train=False, scale_min=scale_min)
-        
-        # Keep using dictionary incase we want to compare results between different scales
-        predict = {}
-        for scale in option.keys():
-            if option[scale]:
-                predict[scale] = tf.argmax(model[scale], dimension=3)
-
-        return predict
-
-    def train(self, params, image, truth, scale_min='fcn16s', save_var=True):
+    def train(self, params, image, gt_masks, save_var=True):
         '''
-        Note Dtype:
-        image: reshaped image value, shape=[1, Height, Width, 3], tf.float32, numpy ndarray
-        truth: reshaped image label, shape=[Height*Width], tf.int32, numpy ndarray
+        Input
+        image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
+        gt_masks: stacked instance_masks, shape=[h, w, num_selected], tf.int32
         '''
         # Build model
-        model = self._build_model(image, params['num_classes'], is_train=True, scale_min=scale_min, save_var=save_var) 
-        upscored = model[scale_min]
-        old_shape = tf.shape(upscored)
-        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
-        prediction = tf.reshape(upscored, new_shape)
+        model = self._build_model(image, params['num_classes'], params['max_instance'], is_train=True, save_var=save_var) 
+        pred_masks = model['upmask']
 
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
+        # Split stack by semantic class
+        pred_mask_list = tf.split(2, self.num_selected, pred_masks)
+        gt_mask_list = tf.split(2, self.num_selected, gt_masks)
+
+        # Softmax regression over each class
+        loss = 0
+        for i in range(self.num_selected):
+            pred = pred_mask_list[i]
+            gt = gt_mask_list[i]
+            shape = tf.shape(pred)
+            new_shape = [shape[0]*shape[1], params['max_instance']]
+            pred = tf.reshape(pred, [shape[0]*shape[1], params['max_instance']])
+            gt = tf.reshape(gt, [shape[0]*shape[1], 1])
+            loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
+
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
-
         return train_step, loss
 
+    def inference(self, params, image):
+        """
+        Input: image
+        Return: a stack of masks, shape = [h, w, num_classes], 
+                each slice represent instance masks belonging to a class
+                value of each pixel is between [0,max_instance)
+        """
+        # Build model
+        model = self._build_model(image, params['num_classes'], params['max_instance'], is_train=False)
+        pred_masks = model['upmask']
+        
+        # Split stack by semantic class
+        pred_mask_list = tf.split(2, self.num_selected, pred_masks)
+        instance_masks = []
+        for i in range(self.num_selected):    
+            instance_masks.append(tf.argmax(pred_mask_list[i], dimension=2))
+        pred_mask_pack = tf.concat(2, instance_masks)
+        return pred_mask_pack
+
+    
     
