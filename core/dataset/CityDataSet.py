@@ -123,15 +123,15 @@ class CityDataSet():
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
-            label = label.reshape(1, *label.shape)
             self.idx += 1
         
         if self.use_gt_mask:
             # mask should be the first two channels of label as numpy array
-            mask = label[:,:,range(2)]
-            print('label shape %s,mask shape %s ',%(label.shape, mask.shape))
+            mask = label[:,:,:,range(2)]
+            print('label shape %s,mask shape %s '%(label.shape, mask.shape))
             return (image,mask)
         else:
+            label = label.reshape(1, *label.shape)
             return (image,label)
 
 
@@ -167,10 +167,8 @@ class CityDataSet():
             print('Warning: no image with name %s!!'%fname)
             label = None
             return label
-
         label = np.array(img, dtype=np.uint8)
         label = label[np.newaxis, ...]
-
         return label
 
     def pred_to_color(self):
