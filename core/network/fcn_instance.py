@@ -21,8 +21,8 @@ class InstanceFCN8s:
 
     def __init__(self, data_path=None, target_class={11:'person', 13:'car'}):
         # Define classes to be segmented to instance level e.g {11:'person', 13:'car'}
-        target_class = target_class 
-        num_selected = len(target_class)
+        self.target_class = target_class 
+        self.num_selected = len(target_class)
         
         
         # Load pretrained weight
@@ -120,16 +120,17 @@ class InstanceFCN8s:
                                     shape=[1, 1, in_features, num_classes], 
                                     relu=False, dropout=False, var_dict=var_dict)
 
-        score_out = tf.add(upscore_pool4_2s, score_pool3)
-        
+        score_out = tf.add(upscore_pool4_2s, score_pool3)         
+
         # Select the designated classes e.g car and person
         sub_score = []
         shape = tf.shape(score_out)
-        for id in sorted(self.target_class.keys):
-            print('slicing %d'%id)
-            sub_score.append(tf.slice(w, [0, 0, id], [shape[0], shape[1], 1]))
 
-        model['semantic_mask'] = tf.concat(2, sub_score)
+	for id in sorted(self.target_class.keys()):
+            print('slicing %d'%id)
+            sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
+
+        model['semantic_mask'] = tf.concat(3, sub_score)
         
         # Convolve semantic_mask to several stacks of instance masks, each having shape [h, w, max_instance]
         model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_mask", 
@@ -156,8 +157,8 @@ class InstanceFCN8s:
         pred_masks = model['upmask']
 
         # Split stack by semantic class
-        pred_mask_list = tf.split(2, self.num_selected, pred_masks)
-        gt_mask_list = tf.split(2, self.num_selected, gt_masks)
+        pred_mask_list = tf.split(3, self.num_selected, pred_masks)
+        gt_mask_list = tf.split(3, self.num_selected, gt_masks)
 
         # Softmax regression over each class
         loss = 0
@@ -165,9 +166,8 @@ class InstanceFCN8s:
             pred = pred_mask_list[i]
             gt = gt_mask_list[i]
             shape = tf.shape(pred)
-            new_shape = [shape[0]*shape[1], params['max_instance']]
-            pred = tf.reshape(pred, [shape[0]*shape[1], params['max_instance']])
-            gt = tf.reshape(gt, [shape[0]*shape[1], 1])
+            pred = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
+            gt = tf.reshape(gt, [-1])
             loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
 
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
