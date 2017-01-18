@@ -65,18 +65,19 @@ def create_instance_data(instances, classname, image, img_shape):
                 continue
             elif label_id == classname[1]: #class_id
                 inst_id = pixel % 1000
-                if inst_id in instances[classname]:
+                if inst_id in instances[classname[0]]:
                     # remember the pixel's coordinates
                     x_coord = row
                     y_coord = col
-                    instances[classname][inst_id]['pixels'].append((x_coord, y_coord))
+                    instances[classname[0]][inst_id]['pixels'].append((x_coord, y_coord))
                 else: # the first time seeing this instance id
-                    instances[classname][inst_id] = {}
+                    instances[classname[0]][inst_id] = {}
                     # and remember its coordinates
                     x_coord = row
                     y_coord = col
-                    instances[classname][inst_id]['pixels'].append((x_coord, y_coord))
-                    instances[classname][inst_id]['pixel_avg'] = [0.0, 0.0]
+                    instances[classname[0]][inst_id]['pixels'] = []
+                    instances[classname[0]][inst_id]['pixels'].append((x_coord, y_coord))
+                    instances[classname[0]][inst_id]['pixel_avg'] = [0.0, 0.0]
             else:
                 # Ignore othere values
                 continue
@@ -88,9 +89,9 @@ def cal_pixel_avg(instances):
     '''
     class_labels = instances.keys()
     for label in class_labels:
-        for inst, values in instances[label]:
-        coord_avg = np.mean(values['pixels'], axis=0)
-        instances[label][inst]['pixel_avg'] = coord_avg
+        for inst, values in instances[label].items():
+        	coord_avg = np.mean(values['pixels'], axis=0)
+        	instances[label][inst]['pixel_avg'] = coord_avg
 
 def sort_instances(instances):
     '''
@@ -102,15 +103,15 @@ def sort_instances(instances):
     # extract pixel_avg to a list
     for label in class_labels:
         class_avg_pixels[label] = []
-            for inst, values in instances[label].items():
-                class_avg_pixels[label].append((inst, values['pixel_avg']))
+        for inst, values in instances[label].items():
+        	class_avg_pixels[label].append((inst, values['pixel_avg'].tolist()))
     # sort the list
     for label in class_labels:
         class_avg_pixels[label] = sorted(class_avg_pixels[label], key=lambda tup: tup[1])
 
     return class_avg_pixels
 
-def generate_masks(class_avg_pixels, MAX_instances, img_shape):
+def generate_masks(instances, class_avg_pixels, MAX_instances, img_shape):
     '''
     Generate masks for the Ground truth;
     MAX_instances: specify the max number of instances for each class
@@ -121,6 +122,7 @@ def generate_masks(class_avg_pixels, MAX_instances, img_shape):
     Width = img_shape[1]
     class_labels = class_avg_pixels.keys()
     for label in class_labels:
+    	index = 0
         for index, item in enumerate(class_avg_pixels[label]):
             if index < MAX_instances:
                 inst = item[0]
@@ -130,26 +132,29 @@ def generate_masks(class_avg_pixels, MAX_instances, img_shape):
                 fill_data = np.ones(len(row), dtype=np.int8)
                 mask = sparse.coo_matrix((fill_data, (row, col)), shape=(Height, Width)).toarray()
                 if label in Gt_mask:
-                    Gt_mask[label] = np.stack((Gt_mask[label], mask))
+                    Gt_mask[label] = np.dstack((Gt_mask[label], mask))
                 else:
                     Gt_mask[label] = mask
         # fill the remaining masks with zeros
         if index < MAX_instances - 1:
-            remaining = MAX_instances - index - 1
+        	if index == 0:
+        		remaining = MAX_instances
+            else:
+            	remaining = MAX_instances - index - 1
             mask = np.zeros((Height, Width), dtype=np.int8)
             for i in range(remaining):
                 # need to check if there exists such an instance of this class
                 if label in Gt_mask:
-                    Gt_mask[label] = np.stack((Gt_mask[label], mask))
+                    Gt_mask[label] = np.dstack((Gt_mask[label], mask))
                 else:
                     Gt_mask[label] = mask
 
     # The final masks of ground truth
-    Gt_mask = np.stack((Gt_mask['car'],Gt_mask['person']))
+    Gt_mask = np.dstack((Gt_mask['person'],Gt_mask['car']))
 
     return Gt_mask
 
-def main(argv):
+def main():
     cityscapesPath = './data/CityDatabase'
     instances = {}
     classnames = [('car', 13), ('person', 11)]
@@ -157,21 +162,22 @@ def main(argv):
     files = get_file_list()
 
     progress = 0
-    print("Progress: {:>3} %".format( progress * 100 / len(files) ), end=' ')
+    print("Progress: {:>3} %".format( progress * 100 / len(files) ))
 
     for fname in files:
         # image is np.array, dtype=np.int16, has a shape of img_shape
         (image, img_shape) = open_gt_file(fname)
         for classname in classnames:
+        	instances[classname[0]] = {}
             create_instance_data(instances, classname, image, img_shape)
         cal_pixel_avg(instances)
         class_avg_pixels = sort_instances(instances)
-        Gt_mask = generate_masks(class_avg_pixels, MAX_instances, img_shape)
+        Gt_mask = generate_masks(instances, class_avg_pixels, MAX_instances, img_shape)
         fname = fname.replace('png', 'npy')
         np.save(fname, Gt_mask)
 
         progress += 1
-        print("\rProgress: {:>3} %".format( progress * 100 / len(files) ), end=' ')
+        print("\rProgress: {:>3} %".format( progress * 100 / len(files) ))
         sys.stdout.flush()
 
 if __name__ == "__main__":
