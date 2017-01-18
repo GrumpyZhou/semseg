@@ -25,16 +25,26 @@ import os
 import glob
 from scipy import sparse
 from scipy.misc import toimage
+from scipy.misc import imsave
+
+os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
 
 def get_file_list(cityscapesPath):
     '''
-    Give data path, find all *_gt*_instanceTrainIds.png files for gtFine
+    Give data path, find all .json files for gtFine
     '''
-    searchFine = os.path.join( cityscapesPath , "gtFine" , "*" , "*" , "*_gt*_instanceTrainIds.png" )
-    filesFine = glob.glob( searchFine )
+
+    searchFinetrain = os.path.join( cityscapesPath , "gtFine" , "train" , "*" , "*_gt*_polygons.json")
+    searchFineval = os.path.join( cityscapesPath , "gtFine" , "val" , "*" , "*_gt*_polygons.json")
+
+    filesFinetrain = glob.glob(searchFinetrain)
+    filesFineval = glob.glob(searchFineval)
+    filesFine = filesFinetrain + filesFineval
     filesFine.sort()
-    if not files:
+
+    if not filesFine:
         sys.exit('Did not find any files.')
+    print('Got {} instance files. '.format(len(filesFine)))
     return filesFine
 
 def open_gt_file(fname):
@@ -60,6 +70,8 @@ def create_instance_data(instances, classname, image, img_shape):
         for col in range(Width):
             pixel = image[row][col]
             label_id = pixel / 1000
+            label_id = int(label_id)
+            # print('pixel {}, lable {}'.format(pixel, label_id))
             if pixel == 19: #Background
                 # Ignore background
                 continue
@@ -90,8 +102,8 @@ def cal_pixel_avg(instances):
     class_labels = instances.keys()
     for label in class_labels:
         for inst, values in instances[label].items():
-        	coord_avg = np.mean(values['pixels'], axis=0)
-        	instances[label][inst]['pixel_avg'] = coord_avg
+            coord_avg = np.mean(values['pixels'], axis=0)
+            instances[label][inst]['pixel_avg'] = coord_avg
 
 def sort_instances(instances):
     '''
@@ -102,15 +114,49 @@ def sort_instances(instances):
     class_labels = instances.keys()
     # extract pixel_avg to a list
     for label in class_labels:
+        # print('sort_instance, class: {}'.format(label))
         class_avg_pixels[label] = []
         for inst, values in instances[label].items():
-        	class_avg_pixels[label].append((inst, values['pixel_avg'].tolist()))
+            class_avg_pixels[label].append((inst, values['pixel_avg'].tolist()))
     # sort the list
     for label in class_labels:
         class_avg_pixels[label] = sorted(class_avg_pixels[label], key=lambda tup: tup[1])
 
     return class_avg_pixels
 
+def generate_sparse_mask(instances, class_avg_pixels, MAX_instances, img_shape):
+    Gt_mask = {}
+    Height = img_shape[0]
+    Width = img_shape[1]
+    class_labels = class_avg_pixels.keys()
+    for label in class_labels:
+        index = 0
+        for index, item in enumerate(class_avg_pixels[label]):
+            if index < MAX_instances:
+                inst = item[0]
+                pixel_array = np.array(instances[label][inst]['pixels'])
+                row = pixel_array[:,0]
+                col = pixel_array[:,1]
+                fill_data = np.ones(len(row), dtype=np.int8) * (index + 1)
+                data = sparse.coo_matrix((fill_data, (row, col)), shape=(Height, Width), dtype=np.int8).tocsc()
+                if label in Gt_mask:
+                    Gt_mask[label] += data
+                else:
+                    Gt_mask[label] = data
+        # if lable is not in Gt_mask, generate 0 matrix
+        # print('label is {}, after index is {}.'.format(label, index))
+        if label not in Gt_mask:
+            Gt_mask[label] = sparse.csc_matrix((Height, Width), dtype=np.int8)
+    # Gt_mask_final
+    # print('final assembly: ')
+    for key in iter(Gt_mask):
+        # Convert to full size matrix
+        Gt_mask[key] = Gt_mask[key].toarray()
+        # print('key: {}'.format(key))
+    Gt_mask_final = np.dstack((Gt_mask['person'],Gt_mask['car']))
+    # print('final mask shape: ', np.shape(Gt_mask_final))
+
+    return Gt_mask_final
 def generate_masks(instances, class_avg_pixels, MAX_instances, img_shape):
     '''
     Generate masks for the Ground truth;
@@ -121,8 +167,9 @@ def generate_masks(instances, class_avg_pixels, MAX_instances, img_shape):
     Height = img_shape[0]
     Width = img_shape[1]
     class_labels = class_avg_pixels.keys()
+    print('in generate, the class_labels are: {}'.format(class_labels))
     for label in class_labels:
-    	index = 0
+        index = 0
         for index, item in enumerate(class_avg_pixels[label]):
             if index < MAX_instances:
                 inst = item[0]
@@ -130,36 +177,53 @@ def generate_masks(instances, class_avg_pixels, MAX_instances, img_shape):
                 row = pixel_array[:,0]
                 col = pixel_array[:,1]
                 fill_data = np.ones(len(row), dtype=np.int8)
-                mask = sparse.coo_matrix((fill_data, (row, col)), shape=(Height, Width)).toarray()
+                # mask = sparse.coo_matrix((fill_data, (row, col)), shape=(Height, Width), dtype=np.int8).toarray()
+                mask = sparse.coo_matrix((fill_data, (row, col)), shape=(Height, Width), dtype=np.int8)
                 if label in Gt_mask:
-                    Gt_mask[label] = np.dstack((Gt_mask[label], mask))
+                    # Gt_mask[label] = np.dstack((Gt_mask[label], mask))
+                    Gt_mask[label].append(mask)
+                    # print('shape of gt_label {} is {}'.format(label, np.shape(Gt_mask[label])))
                 else:
-                    Gt_mask[label] = mask
+                    # Gt_mask[label] = mask
+                    Gt_mask[label] = []
+                    Gt_mask[label].append(mask)
         # fill the remaining masks with zeros
         if index < MAX_instances - 1:
-        	if index == 0:
-        		remaining = MAX_instances
+            if index == 0:
+                remaining = MAX_instances
             else:
-            	remaining = MAX_instances - index - 1
+                remaining = MAX_instances - index - 1
             mask = np.zeros((Height, Width), dtype=np.int8)
             for i in range(remaining):
                 # need to check if there exists such an instance of this class
                 if label in Gt_mask:
-                    Gt_mask[label] = np.dstack((Gt_mask[label], mask))
+                    # Gt_mask[label] = np.dstack((Gt_mask[label], mask))
+                    Gt_mask[label].append(mask)
+                    # print('shape of gt_label {} is {}'.format(label, np.shape(Gt_mask[label])))
                 else:
-                    Gt_mask[label] = mask
+                    # Gt_mask[label] = mask
+                    Gt_mask[label] = []
+                    Gt_mask[label].append(mask)
 
     # The final masks of ground truth
-    Gt_mask = np.dstack((Gt_mask['person'],Gt_mask['car']))
+    # print('final assembly: ')
+    # for key in iter(Gt_mask):
+    #     print('key: {}'.format(key))
+    # Gt_mask_final = np.dstack((Gt_mask['car'],Gt_mask['person']))
+    Gt_mask_final = Gt_mask['car'] + Gt_mask['person']
 
-    return Gt_mask
+    return Gt_mask_final
 
 def main():
-    cityscapesPath = './data/CityDatabase'
+
+    if 'CITYSCAPES_DATASET' in os.environ:
+        cityscapesPath = os.environ['CITYSCAPES_DATASET']
+
     instances = {}
     classnames = [('car', 13), ('person', 11)]
-    MAX_instances = 100
-    files = get_file_list()
+    MAX_instances = 30
+    files = get_file_list(cityscapesPath)
+    # files = ['/Users/WY/Desktop/instance-data/aachen_000004_000019_gtFine_instanceTrainIds.png']
 
     progress = 0
     print("Progress: {:>3} %".format( progress * 100 / len(files) ))
@@ -167,14 +231,27 @@ def main():
     for fname in files:
         # image is np.array, dtype=np.int16, has a shape of img_shape
         (image, img_shape) = open_gt_file(fname)
+        # print('open file {}, shape {}'.format(fname, img_shape))
         for classname in classnames:
-        	instances[classname[0]] = {}
+            instances[classname[0]] = {}
             create_instance_data(instances, classname, image, img_shape)
         cal_pixel_avg(instances)
         class_avg_pixels = sort_instances(instances)
-        Gt_mask = generate_masks(instances, class_avg_pixels, MAX_instances, img_shape)
-        fname = fname.replace('png', 'npy')
-        np.save(fname, Gt_mask)
+        # print('in main, class labels are {}'.format(class_avg_pixels.keys()))
+        # Gt_mask = generate_masks(instances, class_avg_pixels, MAX_instances, img_shape)
+        Gt_mask = generate_sparse_mask(instances, class_avg_pixels, MAX_instances, img_shape)
+        # fname = fname.replace('png', 'npy')
+        fname = fname.replace('instanceTrainIds', 'mask')
+        # fname = fname.replace('png', 'pickle')
+        # np.save(fname, Gt_mask)
+        height= np.shape(Gt_mask)[0]
+        width = np.shape(Gt_mask)[1]
+        stacked = np.zeros((height, width), dtype=np.int8)
+        save_mask = np.dstack((Gt_mask, stacked))
+        # print('shape of saved is {}'.format(np.shape(save_mask)))
+        print('Save gt mask to {}.'.format(fname))
+        imsave(fname, save_mask)
+        # cPickle.dump(Gt_mask, open(fname, "w"))
 
         progress += 1
         print("\rProgress: {:>3} %".format( progress * 100 / len(files) ))
