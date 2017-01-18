@@ -21,11 +21,12 @@ import scipy.misc
 import numpy as np
 import tensorflow as tf
 
-from network.fcn_vgg16 import FCN16VGG
 import data_utils as dt
+from network.fcn_instance import InstanceFCN8s
+
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -42,7 +43,7 @@ params = {'rate': 1e-6, 'num_classes': 20, 'max_instance': 30,
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 1
+train_iter = 10
 val_step = 1
 
 # Logging config
@@ -56,7 +57,7 @@ with tf.Session() as sess:
     
     # create model and train op    
     #[train_op, loss] = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
-    pred = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
+    train_op, loss, pred, gt = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
     var_dict_to_train = ifcn.var_dict
     ##tf.scalar_summary('train_loss', loss)
     
@@ -76,11 +77,11 @@ with tf.Session() as sess:
         train_feed_dict = {train_img: next_pair_image,
                            train_gt_mask: next_pair_gt_mask,}
         
-        pred_val = sess.run(pred)
-        print(pred_val.shape)
-
-        #sess.run(train_op, train_feed_dict) 
-        # Save loss value
+        #pred_, gt_ = sess.run([pred, gt ],train_feed_dict)
+	#print('loss',pred_,gt_)  
+        sess.run(train_op, train_feed_dict) 
+        print('loss', sess.run(loss,train_feed_dict))
+	# Save loss value
         #if i % 100 == 0:
             ##summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
             ##writer.add_summary(summary, i)

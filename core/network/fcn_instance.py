@@ -133,16 +133,16 @@ class InstanceFCN8s:
         model['semantic_mask'] = tf.concat(3, sub_score)
         
         # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
-        model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_mask", 
+        model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_depth_mask", 
                               shape=[3, 3, self.num_selected, max_instance], 
                               relu=False, dropout=False, var_dict=var_dict)
 
-        # Upsample to original size *8 
+        # Upsample to original size *8 # Or we have to do it by class
         model['upmask'] = nn.upscore_layer(model['instance_mask'], feed_dict, 
-                                  "upmask", tf.shape(image), self.num_selected,
+                                  "upmask", tf.shape(image), self.num_selected * max_instance,
                                   ksize=16, stride=8, var_dict=var_dict)
 
-        print('InstanceSegNet model is builded successfully!')
+        print('InstanceFCN8s model is builded successfully!')
         print('Model: %s' % str(model.keys()))
         return model
 
@@ -155,12 +155,10 @@ class InstanceFCN8s:
         # Build model
         model = self._build_model(image, params['num_classes'], params['max_instance'], is_train=True, save_var=save_var) 
         pred_masks = model['upmask']
-        return pred_masks
-        """
         # Split stack by semantic class
         pred_mask_list = tf.split(3, self.num_selected, pred_masks)
         gt_mask_list = tf.split(3, self.num_selected, gt_masks)
-        
+
         # Softmax regression over each class
         loss = 0
         for i in range(self.num_selected):
@@ -170,10 +168,10 @@ class InstanceFCN8s:
             pred = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
             gt = tf.reshape(gt, [-1])
             loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
-
+        
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
     
-        return train_step, loss"""
+        return train_step, loss, pred, gt
 
     def inference(self, params, image):
         """
