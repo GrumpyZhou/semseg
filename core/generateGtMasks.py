@@ -8,7 +8,7 @@ MAX_instances: specify max number of instances of each class
 
 Output: the corresponding ground truth masks for each '*_gt*_instanceTrainIds.png' gt file
 e.g. input file:  aachen_000000_000019_gtFine_instanceTrainIds.png
-     output file:  aachen_000000_000019_gtFine_instanceTrainIds.npy
+     output file:  aachen_000000_000019_gtFine_mask.png
 
 *NOTE* The output file is a full size matrix, not sparse!
 '''
@@ -34,8 +34,8 @@ def get_file_list(cityscapesPath):
     Give data path, find all .json files for gtFine
     '''
 
-    searchFinetrain = os.path.join( cityscapesPath , "gtFine" , "train" , "*" , "*_gt*_polygons.json")
-    searchFineval = os.path.join( cityscapesPath , "gtFine" , "val" , "*" , "*_gt*_polygons.json")
+    searchFinetrain = os.path.join( cityscapesPath , "gtFine" , "train" , "*" , "*_gt*_instanceTrainIds.png")
+    searchFineval = os.path.join( cityscapesPath , "gtFine" , "val" , "*" , "*_gt*_instanceTrainIds.png")
 
     filesFinetrain = glob.glob(searchFinetrain)
     filesFineval = glob.glob(searchFineval)
