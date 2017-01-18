@@ -29,14 +29,15 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
-                     'randomize': True,
+                     'randomize': False,
+                     'use_gt_mask': True,
                      'seed': None,
                      'dataset': 'train'}
 
 params = {'rate': 1e-6, 'num_classes': 20, 'max_instance': 30, 
           'target_class':{11:'person', 13:'car'},
           'tsboard_save_path': '../data/tsboard_result/instance',          
-          'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_80000.npy',
+          'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_90000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Load ground truth masks ##### 
