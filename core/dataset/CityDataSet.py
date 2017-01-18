@@ -113,7 +113,7 @@ class CityDataSet():
             if self.idx == len(self.img_indices):
                 self.idx = 0
         img_fname = self.img_indices[self.idx]
-        #print('Batch index: %d'%self.idx)
+        print('Batch index: %d'%self.idx)
         image = self.load_image(img_fname)
         image = image.reshape(1, *image.shape)
 
@@ -128,6 +128,8 @@ class CityDataSet():
         
         if self.use_gt_mask:
             # mask should be the first two channels of label as numpy array
+            mask = label[:,:,range(2)]
+            print('label shape %s,mask shape %s ',%(label.shape, mask.shape))
             return (image,mask)
         else:
             return (image,label)
