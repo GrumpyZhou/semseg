@@ -55,7 +55,7 @@ def mask_layer(x, feed_dict, name, shape, stride=1, relu=False, dropout=False, k
         print('Layer name: %s' % name)  
      
         kernel = get_mask_conv_kernel(feed_dict, name, shape)
-        bias = get_bias(feed_dict, name, shape)
+        bias = get_bias(feed_dict, name, [1, 1, 1, shape[2]*shape[3]])
 
         conv = tf.nn.depthwise_conv2d(x, kernel,
                                       strides=[1, stride, stride, 1],
