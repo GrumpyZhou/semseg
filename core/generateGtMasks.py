@@ -25,6 +25,7 @@ import os
 import glob
 from scipy import sparse
 from scipy.misc import toimage
+from scipy.misc import imsave
 
 os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
 
@@ -32,13 +33,14 @@ def get_file_list(cityscapesPath):
     '''
     Give data path, find all .json files for gtFine
     '''
-	searchFinetrain   = os.path.join( cityscapesPath , "gtFine"   , "train" , "*" , "*_gt*_polygons.json" )
-	searchFineval   = os.path.join( cityscapesPath , "gtFine"   , "val" , "*" , "*_gt*_polygons.json" )
 
-	filesFinetrain = glob.glob(searchFinetrain)
-	filesFineval = glob.glob(searchFineval)
-	filesFine = filesFinetrain + filesFineval
-	filesFine.sort()
+    searchFinetrain = os.path.join( cityscapesPath , "gtFine" , "train" , "*" , "*_gt*_polygons.json")
+    searchFineval = os.path.join( cityscapesPath , "gtFine" , "val" , "*" , "*_gt*_polygons.json")
+
+    filesFinetrain = glob.glob(searchFinetrain)
+    filesFineval = glob.glob(searchFineval)
+    filesFine = filesFinetrain + filesFineval
+    filesFine.sort()
 
     if not filesFine:
         sys.exit('Did not find any files.')
@@ -214,14 +216,14 @@ def generate_masks(instances, class_avg_pixels, MAX_instances, img_shape):
 
 def main():
 
-	if 'CITYSCAPES_DATASET' in os.environ:
-		cityscapesPath = os.environ['CITYSCAPES_DATASET']
+    if 'CITYSCAPES_DATASET' in os.environ:
+        cityscapesPath = os.environ['CITYSCAPES_DATASET']
 
     instances = {}
     classnames = [('car', 13), ('person', 11)]
     MAX_instances = 30
     files = get_file_list(cityscapesPath)
-    # files = ['/Users/WY/Desktop/instance-data/aachen_000001_000019_gtFine_instanceTrainIds.png']
+    # files = ['/Users/WY/Desktop/instance-data/aachen_000004_000019_gtFine_instanceTrainIds.png']
 
     progress = 0
     print("Progress: {:>3} %".format( progress * 100 / len(files) ))
@@ -238,9 +240,17 @@ def main():
         # print('in main, class labels are {}'.format(class_avg_pixels.keys()))
         # Gt_mask = generate_masks(instances, class_avg_pixels, MAX_instances, img_shape)
         Gt_mask = generate_sparse_mask(instances, class_avg_pixels, MAX_instances, img_shape)
-        fname = fname.replace('png', 'npy')
+        # fname = fname.replace('png', 'npy')
+        fname = fname.replace('instanceTrainIds', 'mask')
         # fname = fname.replace('png', 'pickle')
-        np.save(fname, Gt_mask)
+        # np.save(fname, Gt_mask)
+        height= np.shape(Gt_mask)[0]
+        width = np.shape(Gt_mask)[1]
+        stacked = np.zeros((height, width), dtype=np.int8)
+        save_mask = np.dstack((Gt_mask, stacked))
+        # print('shape of saved is {}'.format(np.shape(save_mask)))
+        print('Save gt mask to {}.'.format(fname))
+        imsave(fname, save_mask)
         # cPickle.dump(Gt_mask, open(fname, "w"))
 
         progress += 1
