@@ -35,15 +35,14 @@ train_data_config = {'city_dir':"../data/CityDatabase",
 
 params = {'rate': 1e-6, 'num_classes': 20, 'max_instance': 30, 
           'target_class':{11:'person', 13:'car'},
-          'gt_mask_dir':"...",
           'tsboard_save_path': '../data/tsboard_result/instance',          
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_80000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 5
-val_step = 5
+train_iter = 1
+val_step = 1
 
 # Logging config
 print('Training config: iters %d'%train_iter)
@@ -52,10 +51,11 @@ with tf.Session() as sess:
     ifcn = InstanceFCN8s(params['trained_weight_path'], params['target_class'])
     npy_path = params['save_trained_weight_path']
     train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
-    train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, params['max_instance'] * len(params['target_class'])])
+    train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
     
     # create model and train op    
-    [train_op, loss] = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
+    #[train_op, loss] = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
+    pred = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
     var_dict_to_train = ifcn.var_dict
     ##tf.scalar_summary('train_loss', loss)
     
@@ -74,12 +74,16 @@ with tf.Session() as sess:
         
         train_feed_dict = {train_img: next_pair_image,
                            train_gt_mask: next_pair_gt_mask,}
-        sess.run(train_op, train_feed_dict) 
+        
+        pred_val = sess.run(pred)
+        print(pred_val.shape)
+
+        #sess.run(train_op, train_feed_dict) 
         # Save loss value
-        if i % 100 == 0:
+        #if i % 100 == 0:
             ##summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
             ##writer.add_summary(summary, i)
-            print('Iter %d Training Loss: %f' % (i,loss_value))
+        #   print('Iter %d Training Loss: %f' % (i,loss_value))
             
         # Save weight for validation
         if i >= val_step and i % val_step == 0:
