@@ -39,18 +39,27 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
 
     return conv_out
 
-def mask_layer(x, name, shape, stride=1, relu=False, dropout=False, keep_prob=0.5, var_dict=None):
+def mask_layer(x, feed_dict, name, shape, stride=1, relu=False, dropout=False, keep_prob=0.5, var_dict=None):
+    '''
+    Input
+    x: a stack of semantic mask with shape [batch, height, width, num_classes]
+    shape: the shape of the conv kernel which should be [filter_height, filter_width, in_channels, max_instance]
+
+    Using depthwise convolution to transform every semantic mask into a stack of instance masks
+    
+    Return: 
+    convolved input with shape [batch, height, width, num_classes * max_instance]
+    '''
 
     with tf.variable_scope(name) as scope:
         print('Layer name: %s' % name)  
-        #[filter_height, filter_width, num_classes, max_instance]
      
         kernel = get_mask_conv_kernel(feed_dict, name, shape)
         bias = get_bias(feed_dict, name, shape)
 
         conv = tf.nn.depthwise_conv2d(x, kernel,
-                            strides=[1, stride, stride, 1],
-                            padding='SAME')
+                                      strides=[1, stride, stride, 1],
+                                      padding='SAME')
         conv_out = tf.nn.bias_add(conv, bias) 
             
         if relu:
