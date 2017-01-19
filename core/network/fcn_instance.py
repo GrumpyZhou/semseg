@@ -124,17 +124,23 @@ class InstanceFCN8s:
 
         # Perform prediction and generate corresponding masks of designated classes e.g car and person
 
-        pred_out = tf.argmax(model[scale], dimension=3)
-        pred_out = tf.cast(pred_out, tf.int8)
-        shape = tf.shape(pred_out)        
-        
+        shape = tf.shape(score_out)
+        pred_out = tf.argmax(score_out, dimension=3)
+        pred_out = tf.cast(pred_out, tf.float32)
+        pred_out = tf.reshape(pred_out,[shape[1],shape[2]])
         sub_score = []
         
 	for id in sorted(self.target_class.keys()):
             where = tf.equal(pred_out, id)
             indices = tf.where(where)
-            val = tf.ones((tf.shape(indices)[0],),tf.int8)
-            sub_score.append(tf.sparse_to_dense(indices,[shape[0], shape[1], shape[2], 1],val))
+            val = tf.ones((tf.shape(indices)[0],),tf.float32)
+            model['test']=[tf.shape(indices),tf.shape(pred_out), tf.shape(val), (shape[1],shape[2])]
+
+            mask = tf.sparse_to_dense(indices,[128, 256],val)
+	    #mask = pred_out 
+            mask = tf.reshape(mask, [shape[0], shape[1], shape[2], 1])
+	    sub_score.append(mask)
+
 
         """
 	for id in sorted(self.target_class.keys()):
@@ -182,7 +188,7 @@ class InstanceFCN8s:
         
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
     
-        return train_step, loss, pred, gt
+        return train_step, loss, pred, gt, model['test']
 
     def inference(self, params, image):
         """
