@@ -8,58 +8,48 @@ from __future__ import print_function
 import sys
 sys.path.append("..")
 
-import skimage
-import skimage.io
-import skimage.transform
-
 import os
-import scipy as scp
-import scipy.misc
-from PIL import Image
-
 import numpy as np
 import tensorflow as tf
 
-from network.fcn_vgg16 import FCN16VGG
+from network.fcn_instance import InstanceFCN8s
 import data_utils as dt
-import glob
+
+from scipy.misc import toimage
+from scipy.misc import imsave
 
 from eval import evalPixelSemantic
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Import training and validation dataset
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
+                     'use_gt_mask': True,
                      'seed': None,
-                     'dataset':'val',
+                     'dataset':'train',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'max_instance': 30, 
           'target_class':{11:'person', 13:'car'},
-          'trained_weight_path':'../data/val_weights/instance/city_instance_.npy'}
+          'trained_weight_path':'../data/val_weights/city_instance_4.npy'}
 
-print('Validate weight %s'%params['trained_weight_path'])
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 1
+iterations = 3
 
 
 with tf.Session() as sess:
-    # Init model and load approriate weights-data
-    vgg_fcn32s = FCN16VGG(params['trained_weight_path'])
+    # Initialization
+    ifcn = InstanceFCN8s(params['trained_weight_path'], params['target_class'])
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
-    # Build fcn32 model
-    option={'fcn32s':False, 'fcn16s':True, 'fcn8s':False}
-    predict_ = vgg_fcn32s.inference(image, num_classes=params['num_classes'],
-                                    scale_min='fcn16s', option=option)
-
-    predict = {}
-    accuracy = 0.0
-    print('Finished building inference network-fcn16.')
+    # Build fcn8s_instance, return masks of each class [mask_11,mask_13]
+    # each mask has shape [1, h, w, 1]
+    predict = ifcn.inference(params, image, direct_slice=True)
+    print('Finished building inference network-fcn8s_instance.')
     init = tf.initialize_all_variables()
     sess.run(init)
 
@@ -69,19 +59,9 @@ with tf.Session() as sess:
         next_pair = test_dataset.next_batch()
         next_pair_image = next_pair[0]
         feed_dict = {image: next_pair_image}
-
-        predict = sess.run(predict_, feed_dict=feed_dict)
-        prefix_dict = []
-        for key in option.keys():
-            if option[key]:
-                fname_prefix = key+params['pred_type_prefix']  # e.g fcn16_skip_ will be added into the name of pred_to_color
-                prefix_dict.append(fname_prefix)
-                test_dataset.save_trainID_img(fname_prefix, predict[key])
-    # print("Inference done! Start transforming to colored ...")
-    # test_dataset.pred_to_color()
-    print("Inference done! Start transforming to labelIDs ...")
-    test_dataset.pred_to_labelID(prefix_dict)
-    # return averageScore over all tested images, data type: float
-    # Usage: see evalPixelSemantic.py
-    accuracy = evalPixelSemantic.run_eval(test_data_config['labelIDs_save_path'])
-
+        
+        predict_ = sess.run(predict, feed_dict=feed_dict)
+        imsave('../data/test_city_colored/person_%d.png'%i,predict_[0])
+        imsave('../data/test_city_colored/car_%d.png'%i, predict_[1])
+        
+        
