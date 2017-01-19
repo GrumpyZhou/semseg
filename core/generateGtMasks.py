@@ -27,7 +27,8 @@ from scipy import sparse
 from scipy.misc import toimage
 from scipy.misc import imsave
 
-os.environ["CITYSCAPES_DATASET"] = "/Users/WY/Downloads/CityDatabase"
+# os.environ["CITYSCAPES_DATASET"] = "/Users/WY/Downloads/CityDatabase"
+os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
 
 def get_file_list(cityscapesPath):
     '''
