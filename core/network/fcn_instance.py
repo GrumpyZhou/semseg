@@ -120,16 +120,27 @@ class InstanceFCN8s:
                                     shape=[1, 1, in_features, num_classes], 
                                     relu=False, dropout=False, var_dict=var_dict)
 
-        score_out = tf.add(upscore_pool4_2s, score_pool3)         
+        score_out = tf.add(upscore_pool4_2s, score_pool3)
 
-        # Select the designated classes e.g car and person
+        # Perform prediction and generate corresponding masks of designated classes e.g car and person
+
+        pred_out = tf.argmax(model[scale], dimension=3)
+        pred_out = tf.cast(pred_out, tf.int8)
+        shape = tf.shape(pred_out)        
+        
         sub_score = []
-        shape = tf.shape(score_out)
+        
+	for id in sorted(self.target_class.keys()):
+            where = tf.equal(pred_out, id)
+            indices = tf.where(where)
+            val = tf.ones((tf.shape(indices)[0],),tf.int8)
+            sub_score.append(tf.sparse_to_dense(indices,[shape[0], shape[1], shape[2], 1],val))
 
+        """
 	for id in sorted(self.target_class.keys()):
             print('slicing %d'%id)
             sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
-
+        """
         model['semantic_mask'] = tf.concat(3, sub_score)
         
         # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
