@@ -149,8 +149,8 @@ class InstanceFCN8s:
         
         # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
         model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_depth_mask", 
-                              shape=[3, 3, self.num_selected, max_instance], 
-                              relu=False, dropout=False, var_dict=var_dict)
+                                               shape=[3, 3, self.num_selected, max_instance], 
+                                               relu=False, dropout=False, var_dict=var_dict)
 
         # Upsample to original size *8 # Or we have to do it by class
         model['upmask'] = nn.upscore_layer(model['instance_mask'], feed_dict, 
@@ -204,7 +204,7 @@ class InstanceFCN8s:
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
         return train_step, loss
 
-    def inference(self, params, image):
+    def inference(self, params, image, direct_slice=True):
         """
         Input: image
         Return: a stack of masks, shape = [h, w, num_classes], 
@@ -212,13 +212,13 @@ class InstanceFCN8s:
                 value of each pixel is between [0,max_instance)
         """
         # Build model
-        model = self._build_model(image, params['num_classes'], params['max_instance'], is_train=False)
+        model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=False) 
         pred_masks = model['upmask']
         
         # Split stack by semantic class
-        pred_mask_list = tf.split(2, self.num_selected, pred_masks)
+        pred_mask_list = tf.split(3, self.num_selected, pred_masks)
         instance_masks = []
         for i in range(self.num_selected):    
-            instance_masks.append(tf.argmax(pred_mask_list[i], dimension=2))
-        pred_mask_pack = tf.concat(2, instance_masks)
-        return pred_mask_pack
+            pred = tf.argmax(pred_mask_list[i], dimension=3)
+            instance_masks.append(tf.squeeze(pred))
+        return instance_masks
