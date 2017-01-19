@@ -33,7 +33,7 @@ class InstanceFCN8s:
         self.var_dict = {}
         
 
-    def _build_model(self, image, num_classes, max_instance, is_train=False, save_var=False, val_dict=None):
+    def _build_model(self, image, num_classes, max_instance, direct_slice, is_train=False, save_var=False, val_dict=None):
         
         model = {}
         if val_dict is None:
@@ -122,31 +122,29 @@ class InstanceFCN8s:
 
         score_out = tf.add(upscore_pool4_2s, score_pool3)
 
-        # Perform prediction and generate corresponding masks of designated classes e.g car and person
 
-        shape = tf.shape(score_out)
-        pred_out = tf.argmax(score_out, dimension=3)
-        pred_out = tf.cast(pred_out, tf.float32)
-        pred_out = tf.reshape(pred_out,[shape[1],shape[2]])
         sub_score = []
-        
-	for id in sorted(self.target_class.keys()):
-            where = tf.equal(pred_out, id)
-            indices = tf.where(where)
-            val = tf.ones((tf.shape(indices)[0],),tf.float32)
-            model['test']=[tf.shape(indices),tf.shape(pred_out), tf.shape(val), (shape[1],shape[2])]
+        shape = tf.shape(score_out)
 
-            mask = tf.sparse_to_dense(indices,[128, 256],val)
-	    #mask = pred_out 
-            mask = tf.reshape(mask, [shape[0], shape[1], shape[2], 1])
-	    sub_score.append(mask)
+        if direct_slice:
+            # Select directly the designated classes e.g car and person
+            for id in sorted(self.target_class.keys()):
+                print('slicing %d'%id)
+                sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
+        else:
+            # Perform prediction and generate corresponding masks of designated classes e.g car and person
+            pred_out = tf.argmax(score_out, dimension=3)
+            pred_out = tf.cast(pred_out, tf.float32)
+            pred_out = tf.reshape(pred_out,[shape[1],shape[2]])
+            
+            for id in sorted(self.target_class.keys()):
+                where = tf.equal(pred_out, id)
+                indices = tf.where(where)
+                val = tf.ones((tf.shape(indices)[0],),tf.float32)
+                mask = tf.sparse_to_dense(indices,[128, 256],val)
+                mask = tf.reshape(mask, [shape[0], shape[1], shape[2], 1])
+                sub_score.append(mask)
 
-
-        """
-	for id in sorted(self.target_class.keys()):
-            print('slicing %d'%id)
-            sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
-        """
         model['semantic_mask'] = tf.concat(3, sub_score)
         
         # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
@@ -163,32 +161,48 @@ class InstanceFCN8s:
         print('Model: %s' % str(model.keys()))
         return model
 
-    def train(self, params, image, gt_masks, save_var=True):
+    def train(self, params, image, gt_masks, sparse_loss=True, direct_slice=True, save_var=True):
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
         gt_masks: stacked instance_masks, shape=[h, w, num_selected], tf.int32
         '''
         # Build model
-        model = self._build_model(image, params['num_classes'], params['max_instance'], is_train=True, save_var=save_var) 
+        model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=True, save_var=save_var) 
         pred_masks = model['upmask']
         # Split stack by semantic class
         pred_mask_list = tf.split(3, self.num_selected, pred_masks)
         gt_mask_list = tf.split(3, self.num_selected, gt_masks)
 
-        # Softmax regression over each class
+        # Loss: softmax + cross entropy
         loss = 0
-        for i in range(self.num_selected):
-            pred = pred_mask_list[i]
-            gt = gt_mask_list[i]
-            shape = tf.shape(pred)
-            pred = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
-            gt = tf.reshape(gt, [-1])
-            loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
-        
+
+        if sparse_loss:
+            for i in range(self.num_selected):
+                pred = pred_mask_list[i]
+                gt = gt_mask_list[i]
+                shape = tf.shape(pred)
+                pred = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
+                gt = tf.reshape(gt, [-1])
+                loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
+        else:
+            for i in range(self.num_selected):
+                # Calculate softmax probability
+                pred = pred_mask_list[i]
+                logits = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
+                y = tf.nn.softmax(logits)
+            
+                # Hot-one representation of gt
+                gt = gt_mask_list[i]
+                gt = tf.reshape(gt, [-1])
+                y_ = tf.one_hot(gt, params['max_instance'])
+                
+                # Calculate cross-entropy
+                cross_entropy = -tf.reduce_sum(y_ * tf.log(y))
+                loss += cross_entropy       
+
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
-    
-        return train_step, loss, pred, gt, model['test']
+        return train_step, loss
 
     def inference(self, params, image):
         """
@@ -208,6 +222,3 @@ class InstanceFCN8s:
             instance_masks.append(tf.argmax(pred_mask_list[i], dimension=2))
         pred_mask_pack = tf.concat(2, instance_masks)
         return pred_mask_pack
-
-    
-    
