@@ -27,7 +27,7 @@ from scipy import sparse
 from scipy.misc import toimage
 from scipy.misc import imsave
 
-os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
+os.environ["CITYSCAPES_DATASET"] = "/Users/WY/Downloads/CityDatabase"
 
 def get_file_list(cityscapesPath):
     '''
@@ -250,7 +250,8 @@ def main():
         save_mask = np.dstack((Gt_mask, stacked))
         # print('shape of saved is {}'.format(np.shape(save_mask)))
         print('Save gt mask to {}.'.format(fname))
-        imsave(fname, save_mask)
+        # imsave(fname, save_mask)
+        toimage(save_mask, high=29, low=0, cmin=0, cmax=29).save(fname)
         # cPickle.dump(Gt_mask, open(fname, "w"))
 
         progress += 1
