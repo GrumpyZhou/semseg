@@ -26,16 +26,16 @@ from network.fcn_instance import InstanceFCN8s
 
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
-                     'randomize': True,
+                     'randomize': False,
                      'use_gt_mask': True,
                      'seed': None,
                      'dataset': 'train'}
 
-params = {'rate': 1e-6, 'num_classes': 20, 'max_instance': 30, 
+params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 30, 
           'target_class':{11:'person', 13:'car'},
           'tsboard_save_path': '../data/tsboard_result/instance',          
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_90000.npy',
@@ -43,8 +43,8 @@ params = {'rate': 1e-6, 'num_classes': 20, 'max_instance': 30,
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 1
-val_step = 1
+train_iter = 4
+val_step = 4
 
 # Logging config
 print('Training config: iters %d'%train_iter)
@@ -56,8 +56,7 @@ with tf.Session() as sess:
     train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
     
     # create model and train op    
-    #[train_op, loss] = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
-    train_op, loss, pred, gt, result = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, save_var=True)
+    train_op, loss= ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, sparse_loss=True, direct_slice=True, save_var=True)
     var_dict_to_train = ifcn.var_dict
     ##tf.scalar_summary('train_loss', loss)
     
@@ -77,8 +76,6 @@ with tf.Session() as sess:
         train_feed_dict = {train_img: next_pair_image,
                            train_gt_mask: next_pair_gt_mask,}
         
-        #pred_, gt_ = sess.run([pred, gt ],train_feed_dict)
-	print('##',sess.run(result,train_feed_dict))  
         sess.run(train_op, train_feed_dict) 
         print('loss', sess.run(loss,train_feed_dict))
 	# Save loss value
@@ -96,8 +93,8 @@ with tf.Session() as sess:
                     print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, train_weight_dict[key][0].shape, train_weight_dict[key][1].shape))
                 fname = 'city_instance_%d.npy'%i
 		fpath = npy_path+fname
-                ##np.save(fpath, train_weight_dict)
-                ##print("trained weights saved: ", fpath)
+                np.save(fpath, train_weight_dict)
+                print("trained weights saved: ", fpath)
     print('Finished training')
 
     
