@@ -169,7 +169,7 @@ class InstanceFCN8s:
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
-        gt_masks: stacked instance_masks, shape=[h, w, num_selected], tf.int32
+        gt_masks: stacked instance_masks, shape=[1, h, w, num_selected], tf.int32
         '''
         # Build model
         model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=True, save_var=save_var)
@@ -186,13 +186,20 @@ class InstanceFCN8s:
             pred = pred_mask_list[i]
             gt = gt_mask_list[i]
             for j in range(params['max_instance']):
-                shape = tf.shape(pred)                
+                # shape is [1, H, W, 30]
+                shape = tf.shape(pred)
+                # pred_j has shape [1, H, W, 1], type=tf.float32                
                 pred_j = tf.slice(pred, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
-                #pred_j = tf.reshape(pred_j, [shape[0], shape[1]])
-                (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j)
+                # pred_j = tf.reshape(pred_j, [shape[0], shape[1]])
+                # gt has shape [1, H, W, 1], type tf.int32
+                # j+1 since get_gtmask_tuple() only accepts inst_id range: [1,30]
+                (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j+1)
+                # gt_j has shape [1, H, W, 1] type=tf.float32, inst_pixel is a scalar
                 weight = (total_pixel - inst_pixel) / inst_pixel
-                pred_j = tf.cast(pred_j, tf.float64)
-                gt_j = tf.cast(gt_j, tf.float64)
+                weight = tf.cast(weight, tf.float32)
+                pred_j = tf.cast(pred_j, tf.float32)
+                gt_j = tf.cast(gt_j, tf.float32)
+                # cross_entropy accepts float32 or float64
                 loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(gt_j, pred_j, weight))
         
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
@@ -222,13 +229,18 @@ class InstanceFCN8s:
 
     def get_gtmask_tuple(self, gt_sparse, inst_id):
         '''
-        gt_sparse: H*W*1 sparse gt mask
+        gt_sparse: [1, H, W, 1] sparse gt mask
         inst_id: 1-30 (MUST not start from 0!)
         Return: tuple (0/1 mask, #1s)
         '''
+        gt_shape = tf.shape(gt_sparse)
+        gt_sparse = tf.reshape(gt_sparse, [gt_shape[1], gt_shape[2], 1])
+        # tf.equal() accepts gt_sparse of shape [H, W, 1], tested on this.
         where = tf.equal(gt_sparse, inst_id)
         indices = tf.where(where)
         val = tf.ones((tf.shape(indices)[0],),tf.float32)
-        mask = tf.sparse_to_dense(indices,[1,1024, 2048,1],val)
+        # out_put shape should be [H, W, 1], which is the same dim of indices
+        mask = tf.sparse_to_dense(indices,[1024, 2048,1],val)
+        mask = tf.reshape(mask, [1, 1024, 2048, 1])
 
         return (mask, tf.shape(indices)[0])

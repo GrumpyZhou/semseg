@@ -26,7 +26,7 @@ from network.fcn_instance import InstanceFCN8s
 
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '5'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
