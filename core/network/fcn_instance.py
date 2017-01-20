@@ -122,7 +122,11 @@ class InstanceFCN8s:
 
         score_out = tf.add(upscore_pool4_2s, score_pool3)
 
-
+        # For testing, generate semantic by upsample fusion *8
+        model['fcn8s'] = nn.upscore_layer(score_out, feed_dict, "upscore8",
+                                          tf.shape(image), num_classes,
+                                          ksize=16, stride=8, var_dict=var_dict)
+        
         sub_score = []
         shape = tf.shape(score_out)
 
@@ -181,10 +185,11 @@ class InstanceFCN8s:
             for i in range(self.num_selected):
                 pred = pred_mask_list[i]
                 gt = gt_mask_list[i]
-                shape = tf.shape(pred)
-                pred = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
-                gt = tf.reshape(gt, [-1])
-                loss += tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(pred, gt))
+                for j in range(params['max_instance']):
+                    shape = tf.shape(pred)                
+                    pred_j = tf.slice(score_out, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
+                    (gt_j, ratio) = getGtSlice(gt, j)
+                    loss += tf.nn.weighted_cross_entropy_with_logits(gt_j, pred_j, ratio)        
         else:
             for i in range(self.num_selected):
                 # Calculate softmax probability
@@ -202,7 +207,7 @@ class InstanceFCN8s:
                 loss += cross_entropy       
 
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
-        return train_step, loss
+        return train_step, loss, model['fcn8s']
 
     def inference(self, params, image, direct_slice=True):
         """
