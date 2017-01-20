@@ -165,7 +165,7 @@ class InstanceFCN8s:
         print('Model: %s' % str(model.keys()))
         return model
 
-    def train(self, params, image, gt_masks, sparse_loss=True, direct_slice=True, save_var=True):
+    def train(self, params, image, gt_masks, direct_slice=True, save_var=True):
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
@@ -180,34 +180,26 @@ class InstanceFCN8s:
 
         # Loss: softmax + cross entropy
         loss = 0
+        total_pixel = 1024 * 2048
 
-        if sparse_loss:
-            for i in range(self.num_selected):
-                pred = pred_mask_list[i]
-                gt = gt_mask_list[i]
-                for j in range(params['max_instance']):
-                    shape = tf.shape(pred)                
-                    pred_j = tf.slice(score_out, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
-                    (gt_j, ratio) = getGtSlice(gt, j)
-                    loss += tf.nn.weighted_cross_entropy_with_logits(gt_j, pred_j, ratio)        
-        else:
-            for i in range(self.num_selected):
-                # Calculate softmax probability
-                pred = pred_mask_list[i]
-                logits = tf.reshape(pred, [shape[0]*shape[1]*shape[2], params['max_instance']])
-                y = tf.nn.softmax(logits)
-
-                # Hot-one representation of gt
-                gt = gt_mask_list[i]
-                gt = tf.reshape(gt, [-1])
-                y_ = tf.one_hot(gt, params['max_instance'])
-
-                # Calculate cross-entropy
-                cross_entropy = -tf.reduce_sum(y_ * tf.log(y))
-                loss += cross_entropy
-
+        for i in range(self.num_selected):
+            pred = pred_mask_list[i]
+            gt = gt_mask_list[i]
+            for j in range(params['max_instance']):
+                shape = tf.shape(pred)                
+                pred_j = tf.slice(pred, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
+                #pred_j = tf.reshape(pred_j, [shape[0], shape[1]])
+                (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j)
+                weight = (total_pixel - inst_pixel) / inst_pixel
+                pred_j = tf.cast(pred_j, tf.float64)
+                gt_j = tf.cast(gt_j, tf.float64)
+                loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(gt_j, pred_j, weight))
+        
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
-        return train_step, loss, model['fcn8s']
+
+        # For testing 
+        fcn8s = tf.argmax(model['fcn8s'], dimension=3)
+        return train_step, loss, fcn8s
 
     def inference(self, params, image, direct_slice=True):
         """
@@ -228,15 +220,15 @@ class InstanceFCN8s:
             instance_masks.append(tf.squeeze(pred))
         return instance_masks
 
-    def get_imask_tuple(gt_sparse, inst_num):
+    def get_gtmask_tuple(self, gt_sparse, inst_id):
         '''
         gt_sparse: H*W*1 sparse gt mask
-        inst_num: 1-30 (MUST not start from 0!)
+        inst_id: 1-30 (MUST not start from 0!)
         Return: tuple (0/1 mask, #1s)
         '''
-        where = tf.equal(gt_sparse, inst_num)
+        where = tf.equal(gt_sparse, inst_id)
         indices = tf.where(where)
         val = tf.ones((tf.shape(indices)[0],),tf.float32)
-        mask = tf.sparse_to_dense(indices,[1024, 2048],val)
+        mask = tf.sparse_to_dense(indices,[1,1024, 2048,1],val)
 
         return (mask, tf.shape(indices)[0])

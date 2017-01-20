@@ -43,8 +43,8 @@ params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 30,
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 4
-val_step = 4
+train_iter = 1
+val_step = 1
 
 # Logging config
 print('Training config: iters %d'%train_iter)
@@ -56,7 +56,7 @@ with tf.Session() as sess:
     train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
     
     # create model and train op    
-    train_op, loss= ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, sparse_loss=True, direct_slice=True, save_var=True)
+    train_op, loss, fcn8s = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, direct_slice=False, save_var=True)
     var_dict_to_train = ifcn.var_dict
     ##tf.scalar_summary('train_loss', loss)
     
@@ -76,8 +76,11 @@ with tf.Session() as sess:
         train_feed_dict = {train_img: next_pair_image,
                            train_gt_mask: next_pair_gt_mask,}
         
-        sess.run(train_op, train_feed_dict) 
-        print('loss', sess.run(loss,train_feed_dict))
+        sess.run(train_op, train_feed_dict)
+        loss_value, pred_sem = sess.run([loss, fcn8s], train_feed_dict)
+        print('Iter %d Training Loss: %f' % (i,loss_value))
+        imsave('../data/test_city_colored/semantic_%d.png'%i, pred_sem)
+
 	# Save loss value
         #if i % 100 == 0:
             ##summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
