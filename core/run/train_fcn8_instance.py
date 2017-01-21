@@ -10,13 +10,8 @@ from __future__ import print_function
 import sys
 sys.path.append("..")
 
-import skimage
-import skimage.io
-import skimage.transform
-
 import os
-import scipy as scp
-import scipy.misc
+from scipy.misc import imsave
 
 import numpy as np
 import tensorflow as tf
@@ -35,16 +30,16 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'seed': None,
                      'dataset': 'train'}
 
-params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 30, 
+params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 20, 
           'target_class':{11:'person', 13:'car'},
           'tsboard_save_path': '../data/tsboard_result/instance',          
-          'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_90000.npy',
+          'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 1
-val_step = 1
+train_iter = 80000
+val_step = 5000
 
 # Logging config
 print('Training config: iters %d'%train_iter)
@@ -56,12 +51,12 @@ with tf.Session() as sess:
     train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
     
     # create model and train op    
-    train_op, loss, fcn8s = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, direct_slice=False, save_var=True)
+    train_op, loss = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, direct_slice=False, save_var=True)
     var_dict_to_train = ifcn.var_dict
-    ##tf.scalar_summary('train_loss', loss)
+    tf.scalar_summary('train_loss', loss)
     
-    ##merged_summary = tf.merge_all_summaries()
-    ##writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
+    merged_summary = tf.merge_all_summaries()
+    writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
     
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -77,15 +72,15 @@ with tf.Session() as sess:
                            train_gt_mask: next_pair_gt_mask,}
         
         sess.run(train_op, train_feed_dict)
-        loss_value, pred_sem = sess.run([loss, fcn8s], train_feed_dict)
-        print('Iter %d Training Loss: %f' % (i,loss_value))
-        imsave('../data/test_city_colored/semantic_%d.png'%i, pred_sem)
+        #loss_value, pred_sem = sess.run([loss, fcn8s], train_feed_dict)
+        #print('Iter %d Training Loss: %f' % (i,loss_value))
+        #imsave('../data/test_city_colored/semantic_%d.png'%i, pred_sem)
 
 	# Save loss value
-        #if i % 100 == 0:
-            ##summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
-            ##writer.add_summary(summary, i)
-        #   print('Iter %d Training Loss: %f' % (i,loss_value))
+        if i % 100 == 0:
+            summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
+            writer.add_summary(summary, i)
+            print('Iter %d Training Loss: %f' % (i,loss_value))
             
         # Save weight for validation
         if i >= val_step and i % val_step == 0:

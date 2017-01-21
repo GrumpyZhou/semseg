@@ -33,12 +33,12 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
-params = {'num_classes': 20, 'max_instance': 30, 
+params = {'num_classes': 20, 'max_instance': 20, 
           'target_class':{11:'person', 13:'car'},
-          'trained_weight_path':'../data/val_weights/city_instance_4.npy'}
+          'trained_weight_path':'../data/val_weights/city_instance_100.npy'}
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 3
+iterations = 2
 
 
 with tf.Session() as sess:
@@ -48,7 +48,7 @@ with tf.Session() as sess:
 
     # Build fcn8s_instance, return masks of each class [mask_11,mask_13]
     # each mask has shape [1, h, w, 1]
-    predict = ifcn.inference(params, image, direct_slice=True)
+    predict = ifcn.inference(params, image, direct_slice=False)
     print('Finished building inference network-fcn8s_instance.')
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -61,7 +61,7 @@ with tf.Session() as sess:
         feed_dict = {image: next_pair_image}
         
         predict_ = sess.run(predict, feed_dict=feed_dict)
-        imsave('../data/test_city_colored/person_%d.png'%i,predict_[0])
-        imsave('../data/test_city_colored/car_%d.png'%i, predict_[1])
+        imsave('../data/test_city_instance/person_%d.png'%i,predict_[0])
+        imsave('../data/test_city_instance/car_%d.png'%i, predict_[1])
         
         
