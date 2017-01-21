@@ -123,10 +123,11 @@ class InstanceFCN8s:
         score_out = tf.add(upscore_pool4_2s, score_pool3)
 
         # For testing, generate semantic by upsample fusion *8
-        model['fcn8s'] = nn.upscore_layer(score_out, feed_dict, "upscore8",
-                                          tf.shape(image), num_classes,
-                                          ksize=16, stride=8, var_dict=var_dict)
+        """fcn8s = nn.upscore_layer(score_out, feed_dict, "upscore8",
+                                 tf.shape(image), num_classes,
+                                 ksize=16, stride=8, var_dict=var_dict)
         
+	model['fcn8s'] = tf.squeeze(fcn8s)"""
         sub_score = []
         shape = tf.shape(score_out)
 
@@ -186,27 +187,22 @@ class InstanceFCN8s:
             pred = pred_mask_list[i]
             gt = gt_mask_list[i]
             for j in range(params['max_instance']):
-                # shape is [1, H, W, 30]
                 shape = tf.shape(pred)
-                # pred_j has shape [1, H, W, 1], type=tf.float32                
                 pred_j = tf.slice(pred, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
-                # pred_j = tf.reshape(pred_j, [shape[0], shape[1]])
-                # gt has shape [1, H, W, 1], type tf.int32
-                # j+1 since get_gtmask_tuple() only accepts inst_id range: [1,30]
                 (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j+1)
-                # gt_j has shape [1, H, W, 1] type=tf.float32, inst_pixel is a scalar
-                weight = (total_pixel - inst_pixel) / inst_pixel
+                weight = tf.cond(tf.equal(inst_pixel, 0), lambda: tf.constant(1, dtype=tf.float64) , lambda: (total_pixel - inst_pixel) / inst_pixel )
+                weight = tf.cast(weight, tf.float32)
                 weight = tf.cast(weight, tf.float32)
                 pred_j = tf.cast(pred_j, tf.float32)
                 gt_j = tf.cast(gt_j, tf.float32)
-                # cross_entropy accepts float32 or float64
-                loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(gt_j, pred_j, weight))
+                # loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred_j, gt_j)) 
+                loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight))
         
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
         # For testing 
-        fcn8s = tf.argmax(model['fcn8s'], dimension=3)
-        return train_step, loss, fcn8s
+        #fcn8s = tf.argmax(model['fcn8s'], dimension=2)
+        return train_step, loss
 
     def inference(self, params, image, direct_slice=True):
         """
@@ -235,11 +231,9 @@ class InstanceFCN8s:
         '''
         gt_shape = tf.shape(gt_sparse)
         gt_sparse = tf.reshape(gt_sparse, [gt_shape[1], gt_shape[2], 1])
-        # tf.equal() accepts gt_sparse of shape [H, W, 1], tested on this.
         where = tf.equal(gt_sparse, inst_id)
         indices = tf.where(where)
         val = tf.ones((tf.shape(indices)[0],),tf.float32)
-        # out_put shape should be [H, W, 1], which is the same dim of indices
         mask = tf.sparse_to_dense(indices,[1024, 2048,1],val)
         mask = tf.reshape(mask, [1, 1024, 2048, 1])
 
