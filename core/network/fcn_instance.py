@@ -19,10 +19,12 @@ DATA_DIR = 'data'
 
 class InstanceFCN8s:
 
-    def __init__(self, data_path=None, target_class={11:'person', 13:'car'}):
+    def __init__(self, data_path=None, pred_class={11:'person', 13:'car'}, gt_class={11:'person', 13:'car'}):
         # Define classes to be segmented to instance level e.g {11:'person', 13:'car'}
-        self.target_class = target_class
-        self.num_selected = len(target_class)
+        self.gt_class = gt_class
+        self.pred_class = pred_class
+        self.num_pred_class = len(pred_class)
+        self.num_gt_class = len(gt_class)
 
 
         # Load pretrained weight
@@ -154,12 +156,12 @@ class InstanceFCN8s:
 
         # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
         model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_depth_mask",
-                                               shape=[3, 3, self.num_selected, max_instance],
+                                               shape=[3, 3, self.num_pred_class, max_instance],
                                                relu=False, dropout=False, var_dict=var_dict)
 
         # Upsample to original size *8 # Or we have to do it by class
         model['upmask'] = nn.upscore_layer(model['instance_mask'], feed_dict,
-                                  "upmask", tf.shape(image), self.num_selected * max_instance,
+                                  "upmask", tf.shape(image), self.num_pred_class * max_instance,
                                   ksize=16, stride=8, var_dict=var_dict)
 
         print('InstanceFCN8s model is builded successfully!')
@@ -170,21 +172,21 @@ class InstanceFCN8s:
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
-        gt_masks: stacked instance_masks, shape=[1, h, w, num_selected], tf.int32
+        gt_masks: stacked instance_masks, shape=[1, h, w, num_gt_class], tf.int32
         '''
         # Build model
         model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=True, save_var=save_var)
         pred_masks = model['upmask']
         # Split stack by semantic class
-        pred_mask_list = tf.split(3, self.num_selected, pred_masks)
-        gt_mask_list = tf.split(3, self.num_selected, gt_masks)
+        pred_mask_list = tf.split(3, self.num_pred_class, pred_masks)
+        gt_mask_list = tf.split(3, self.num_gt_class, gt_masks)
 
         # Loss: softmax + cross entropy
         loss = 0
         total_pixel = 1024 * 2048
 
         """Training only with car """
-        pred = pred_mask_list[1]
+        pred = pred_mask_list[0]
         gt = gt_mask_list[1]
         for j in range(params['max_instance']):
             shape = tf.shape(pred)
@@ -199,7 +201,7 @@ class InstanceFCN8s:
             loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight))
 
         """   Multiclasses
-        for i in range(self.num_selected):
+        for i in range(self.num_pred_class):
             pred = pred_mask_list[i]
             gt = gt_mask_list[i]
             for j in range(params['max_instance']):
@@ -233,9 +235,9 @@ class InstanceFCN8s:
         pred_masks = model['upmask']
 
         # Split stack by semantic class
-        pred_mask_list = tf.split(3, self.num_selected, pred_masks)
+        pred_mask_list = tf.split(3, self.num_pred_class, pred_masks)
         instance_masks = []
-        for i in range(self.num_selected):
+        for i in range(self.num_pred_class):
             pred = tf.argmax(pred_mask_list[i], dimension=3)
             instance_masks.append(tf.squeeze(pred))
         return instance_masks

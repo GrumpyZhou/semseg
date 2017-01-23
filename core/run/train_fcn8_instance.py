@@ -21,7 +21,7 @@ from network.fcn_instance import InstanceFCN8s
 
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -31,7 +31,8 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'dataset': 'train'}
 
 params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 20, 
-          'target_class':{11:'person', 13:'car'},
+          'gt_class':{11:'person', 13:'car'},
+          'pred_class':{13:'car'}, 
           'tsboard_save_path': '../data/tsboard_result/instance',          
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
@@ -45,7 +46,7 @@ val_step = 5000
 print('Training config: iters %d'%train_iter)
 with tf.Session() as sess:
     # Initialization
-    ifcn = InstanceFCN8s(params['trained_weight_path'], params['target_class'])
+    ifcn = InstanceFCN8s(data_path=params['trained_weight_path'], gt_class=params['target_class'], pred_class=params['pred_class'])
     npy_path = params['save_trained_weight_path']
     train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
     train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
