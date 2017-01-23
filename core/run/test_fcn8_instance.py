@@ -28,17 +28,17 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'use_gt_mask': True,
                      'seed': None,
-                     'dataset':'train',
+                     'dataset':'val',
                      'pred_save_path':'../data/test_city_trainIDs',
                      'colored_save_path': '../data/test_city_colored',
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'max_instance': 20, 
           'target_class':{11:'person', 13:'car'},
-          'trained_weight_path':'../data/val_weights/city_instance_100.npy'}
+          'trained_weight_path':'../data/val_weights/city_instance_80000.npy'}
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 2
+iterations = 5
 
 
 with tf.Session() as sess:
@@ -61,10 +61,9 @@ with tf.Session() as sess:
         feed_dict = {image: next_pair_image}
         
         predict_ = sess.run(predict, feed_dict=feed_dict)
+        #imsave('../data/test_city_instance/person_%d.png'%i,predict_[0])
+        #imsave('../data/test_city_instance/car_%d.png'%i, predict_[1])
         pname = '../data/test_city_instance/person_%d.png'%i
         cname = '../data/test_city_instance/car_%d.png'%i
         toimage(predict_[0], high=params['max_instance'], low=0, cmin=0, cmax=params['max_instance']).save(pname)
         toimage(predict_[1], high=params['max_instance'], low=0, cmin=0, cmax=params['max_instance']).save(cname)
-        
-        #imsave('../data/test_city_instance/person_%d.png'%i,predict_[0])
-        #imsave('../data/test_city_instance/car_%d.png'%i, predict_[1])
