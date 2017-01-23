@@ -61,7 +61,9 @@ with tf.Session() as sess:
         feed_dict = {image: next_pair_image}
         
         predict_ = sess.run(predict, feed_dict=feed_dict)
-        imsave('../data/test_city_instance/person_%d_80000.png'%i,predict_[0])
-        imsave('../data/test_city_instance/car_%d_80000.png'%i, predict_[1])
-        
-        
+        #imsave('../data/test_city_instance/person_%d_80000.png'%i,predict_[0])
+        #imsave('../data/test_city_instance/car_%d_80000.png'%i, predict_[1])
+        pname = '../data/test_city_instance/person_%d_80000.png'%i
+        cname = '../data/test_city_instance/car_%d_80000.png'%i
+        toimage(predict_[0], high=params['max_instance'], low=0, cmin=0, cmax=params['max_instance']).save(pname)
+        toimage(predict_[1], high=params['max_instance'], low=0, cmin=0, cmax=params['max_instance']).save(cname)
