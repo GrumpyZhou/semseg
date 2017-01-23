@@ -135,7 +135,7 @@ class InstanceFCN8s:
 
         if direct_slice:
             # Select directly the designated classes e.g car and person
-            for id in sorted(self.target_class.keys()):
+            for id in sorted(self.pred_class.keys()):
                 print('slicing %d'%id)
                 sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
         else:
@@ -144,7 +144,7 @@ class InstanceFCN8s:
             pred_out = tf.cast(pred_out, tf.float32)
             pred_out = tf.reshape(pred_out,[shape[1],shape[2]])
 
-            for id in sorted(self.target_class.keys()):
+            for id in sorted(self.pred_class.keys()):
                 where = tf.equal(pred_out, id)
                 indices = tf.where(where)
                 val = tf.ones((tf.shape(indices)[0],),tf.float32)

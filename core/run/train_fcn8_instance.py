@@ -46,10 +46,10 @@ val_step = 5000
 print('Training config: iters %d'%train_iter)
 with tf.Session() as sess:
     # Initialization
-    ifcn = InstanceFCN8s(data_path=params['trained_weight_path'], gt_class=params['target_class'], pred_class=params['pred_class'])
+    ifcn = InstanceFCN8s(data_path=params['trained_weight_path'], gt_class=params['gt_class'], pred_class=params['pred_class'])
     npy_path = params['save_trained_weight_path']
     train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
-    train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['target_class'])])
+    train_gt_mask = tf.placeholder(tf.int32, shape=[1, None, None, len(params['gt_class'])])
     
     # create model and train op    
     train_op, loss = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, direct_slice=False, save_var=True)
