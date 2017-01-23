@@ -34,7 +34,8 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'labelIDs_save_path': '../data/test_city_labelIDs'}
 
 params = {'num_classes': 20, 'max_instance': 20, 
-          'target_class':{11:'person', 13:'car'},
+          'gt_class':{11:'person', 13:'car'},
+          'pred_class':{13:'car'}, 
           'trained_weight_path':'../data/val_weights/city_instance_80000.npy'}
 
 test_dataset = dt.CityDataSet(test_data_config)
@@ -43,7 +44,7 @@ iterations = 5
 
 with tf.Session() as sess:
     # Initialization
-    ifcn = InstanceFCN8s(params['trained_weight_path'], params['target_class'])
+    ifcn = InstanceFCN8s(data_path=params['trained_weight_path'], gt_class=params['gt_class'], pred_class=params['pred_class'])
     image = tf.placeholder(tf.float32, shape=[1, None, None, 3])
 
     # Build fcn8s_instance, return masks of each class [mask_11,mask_13]
