@@ -183,6 +183,22 @@ class InstanceFCN8s:
         loss = 0
         total_pixel = 1024 * 2048
 
+        """Training only with car """
+        pred = pred_mask_list[1]
+        gt = gt_mask_list[1]
+        for j in range(params['max_instance']):
+            shape = tf.shape(pred)
+            pred_j = tf.slice(pred, [0, 0, 0, j], [shape[0], shape[1], shape[2], 1])
+            (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j+1)
+            weight = tf.cond(tf.equal(inst_pixel, 0), lambda: tf.constant(1, dtype=tf.float64) , lambda: (total_pixel - inst_pixel) / inst_pixel )
+            weight = tf.cast(weight, tf.float32)
+            weight = tf.cast(weight, tf.float32)
+            pred_j = tf.cast(pred_j, tf.float32)
+            gt_j = tf.cast(gt_j, tf.float32)
+            # loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred_j, gt_j)) 
+            loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight))
+
+        """   Multiclasses
         for i in range(self.num_selected):
             pred = pred_mask_list[i]
             gt = gt_mask_list[i]
@@ -197,6 +213,7 @@ class InstanceFCN8s:
                 gt_j = tf.cast(gt_j, tf.float32)
                 # loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred_j, gt_j)) 
                 loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight))
+        """
         
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
 
