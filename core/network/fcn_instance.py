@@ -194,12 +194,12 @@ class InstanceFCN8s:
             (gt_j, inst_pixel) = self.get_gtmask_tuple(gt, j+1)
             weight = tf.cond(tf.equal(inst_pixel, 0), lambda: tf.constant(1, dtype=tf.float64) , lambda: (total_pixel - inst_pixel) / inst_pixel )
             weight = tf.cast(weight, tf.float32)
-            weight = tf.cast(weight, tf.float32)
             pred_j = tf.cast(pred_j, tf.float32)
             gt_j = tf.cast(gt_j, tf.float32)
-            # loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred_j, gt_j)) 
-            loss += tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight))
-
+            # loss += tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred_j, gt_j))
+            cross_entropy = tf.nn.weighted_cross_entropy_with_logits(pred_j, gt_j, weight)
+            loss_j = tf.cond(tf.equal(inst_pixel, 0), lambda: 1e6 * cross_entropy, lambda: cross_entropy)
+            loss += tf.reduce_mean(loss_j)
         """   Multiclasses
         for i in range(self.num_pred_class):
             pred = pred_mask_list[i]
