@@ -21,7 +21,7 @@ from network.fcn_instance import InstanceFCN8s
 
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -30,7 +30,7 @@ train_data_config = {'city_dir':"../data/CityDatabase",
                      'seed': None,
                      'dataset': 'train'}
 
-params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 20, 
+params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 10, 
           'gt_class':{11:'person', 13:'car'},
           'pred_class':{13:'car'}, 
           'tsboard_save_path': '../data/tsboard_result/instance',          
