@@ -39,7 +39,7 @@ params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 30,
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 50000
+train_iter = 80000
 val_step = 5000
 
 # Logging config

@@ -35,7 +35,7 @@ class InstanceFCN8s:
         self.var_dict = {}
 
 
-    def _build_model(self, image, num_classes, max_instance, direct_slice, is_train=False, save_var=False, val_dict=None):
+    def _build_model(self, image, max_instance, direct_slice, is_train=False, save_var=False, val_dict=None):
 
         model = {}
         if val_dict is None:
@@ -94,73 +94,41 @@ class InstanceFCN8s:
                                        shape=[1, 1, 4096, 4096], dropout=is_train,
                                        keep_prob=0.5, var_dict=var_dict)
 
-        model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr",
-                                          shape=[1, 1, 4096, num_classes], relu=False,
+        # Skip feature fusion
+        model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr_mask",
+                                          shape=[1, 1, 4096, self.num_pred_class * max_instance], relu=False,
                                           dropout=False, var_dict=var_dict)
 
         # Upsample: score_fr*2
-        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s",
-                                       tf.shape(model['pool4']), num_classes,
+        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s_mask",
+                                       tf.shape(model['pool4']), self.num_pred_class * max_instance,
                                        ksize=4, stride=2, var_dict=var_dict)
         # Fuse upscore_fr_2s + score_pool4
         in_features = model['pool4'].get_shape()[3].value
-        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4",
-                                    shape=[1, 1, in_features, num_classes],
+        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4_mask",
+                                    shape=[1, 1, in_features, self.num_pred_class * max_instance],
                                     relu=False, dropout=False, var_dict=var_dict)
 
         fuse_pool4 = tf.add(upscore_fr_2s, score_pool4)
 
 
         # Upsample fuse_pool4*2
-        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s",
-                                            tf.shape(model['pool3']), num_classes,
+        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s_mask",
+                                            tf.shape(model['pool3']), self.num_pred_class * max_instance,
                                             ksize=4, stride=2, var_dict=var_dict)
 
         # Fuse  upscore_pool4_2s + score_pool3
         in_features = model['pool3'].get_shape()[3].value
-        score_pool3 = nn.conv_layer(model['pool3'], self.data_dict, "score_pool3",
-                                    shape=[1, 1, in_features, num_classes],
+        score_pool3 = nn.conv_layer(model['pool3'], self.data_dict, "score_pool3_mask",
+                                    shape=[1, 1, in_features, self.num_pred_class * max_instance],
                                     relu=False, dropout=False, var_dict=var_dict)
 
         score_out = tf.add(upscore_pool4_2s, score_pool3)
 
-        # For testing, generate semantic by upsample fusion *8
-        """fcn8s = nn.upscore_layer(score_out, feed_dict, "upscore8",
-                                 tf.shape(image), num_classes,
-                                 ksize=16, stride=8, var_dict=var_dict)
-        
-	model['fcn8s'] = tf.squeeze(fcn8s)"""
-        sub_score = []
-        shape = tf.shape(score_out)
-
-        if direct_slice:
-            # Select directly the designated classes e.g car and person
-            for id in sorted(self.pred_class.keys()):
-                print('slicing %d'%id)
-                sub_score.append(tf.slice(score_out, [0, 0, 0, id], [shape[0], shape[1], shape[2], 1]))
-        else:
-            # Perform prediction and generate corresponding masks of designated classes e.g car and person
-            pred_out = tf.argmax(score_out, dimension=3)
-            pred_out = tf.cast(pred_out, tf.float32)
-            pred_out = tf.reshape(pred_out,[shape[1],shape[2]])
-
-            for id in sorted(self.pred_class.keys()):
-                where = tf.equal(pred_out, id)
-                indices = tf.where(where)
-                val = tf.ones((tf.shape(indices)[0],),tf.float32)
-                mask = tf.sparse_to_dense(indices,[128, 256],val)
-                mask = tf.reshape(mask, [shape[0], shape[1], shape[2], 1])
-                sub_score.append(mask)
-
-        model['semantic_mask'] = tf.concat(3, sub_score)
-
-        # Convolve semantic_mask to several stacks of instance masks, each having shape [1, h, w, max_instance]
-        model['instance_mask'] = nn.mask_layer(model['semantic_mask'], feed_dict, "conv_depth_mask",
-                                               shape=[3, 3, self.num_pred_class, max_instance],
-                                               relu=False, dropout=False, var_dict=var_dict)
-
+    
+       
         # Upsample to original size *8 # Or we have to do it by class
-        model['upmask'] = nn.upscore_layer(model['instance_mask'], feed_dict,
+        model['upmask'] = nn.upscore_layer(score_out, feed_dict,
                                   "upmask", tf.shape(image), self.num_pred_class * max_instance,
                                   ksize=16, stride=8, var_dict=var_dict)
 
@@ -175,7 +143,7 @@ class InstanceFCN8s:
         gt_masks: stacked instance_masks, shape=[1, h, w, num_gt_class], tf.int32
         '''
         # Build model
-        model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=True, save_var=save_var)
+        model = self._build_model(image, params['max_instance'], direct_slice=direct_slice, is_train=True, save_var=save_var)
         pred_masks = model['upmask']
         # Split stack by semantic class
         pred_mask_list = tf.split(3, self.num_pred_class, pred_masks)
@@ -202,7 +170,7 @@ class InstanceFCN8s:
                 value of each pixel is between [0,max_instance)
         """
         # Build model
-        model = self._build_model(image, params['num_classes'], params['max_instance'], direct_slice=direct_slice, is_train=False)
+        model = self._build_model(image, params['max_instance'], direct_slice=direct_slice, is_train=False)
         pred_masks = model['upmask']
 
         # Split stack by semantic class
