@@ -21,7 +21,7 @@ from network.fcn_instance import InstanceFCN8s
 
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '6'
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
@@ -39,8 +39,8 @@ params = {'rate': 1e-4, 'num_classes': 20, 'max_instance': 30,
 
 # Load ground truth masks ##### 
 train_dataset = dt.CityDataSet(train_data_config)
-train_iter = 0
-val_step = 500
+train_iter = 50000
+val_step = 5000
 
 # Logging config
 print('Training config: iters %d'%train_iter)
@@ -54,10 +54,10 @@ with tf.Session() as sess:
     # create model and train op    
     train_op, loss = ifcn.train(params=params, image=train_img, gt_masks=train_gt_mask, direct_slice=False, save_var=True)
     var_dict_to_train = ifcn.var_dict
-    #tf.scalar_summary('train_loss', loss)
+    tf.scalar_summary('train_loss', loss)
     
-    #merged_summary = tf.merge_all_summaries()
-    #writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
+    merged_summary = tf.merge_all_summaries()
+    writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
     
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -73,10 +73,10 @@ with tf.Session() as sess:
                            train_gt_mask: next_pair_gt_mask,}
         
         sess.run(train_op, train_feed_dict)
-        loss_value = sess.run(loss, train_feed_dict)
-        print('Iter %d Training Loss: %f' % (i,loss_value))
+        #loss_value = sess.run(loss, train_feed_dict)
+        #print('Iter %d Training Loss: %f' % (i,loss_value))
         
-        """
+       
 	# Save loss value
         if i % 100 == 0:
             summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
@@ -94,7 +94,7 @@ with tf.Session() as sess:
 		fpath = npy_path+fname
                 np.save(fpath, train_weight_dict)
                 print("trained weights saved: ", fpath)
-        """
+       
     print('Finished training')
 
     
