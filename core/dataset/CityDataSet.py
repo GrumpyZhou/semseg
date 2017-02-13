@@ -25,6 +25,7 @@ class CityDataSet():
         self.pred_save_path = params.get('pred_save_path','../data/test_city')
         self.colored_save_path = params.get('colored_save_path', '../data/test_city_colored')
         self.labelIDs_save_path = params.get('labelIDs_save_path', '../data/test_city_labelIDs')
+        self.use_box = params.get('use_box', True)
 
         # Load dataset indices
         (self.img_indices, self.lbl_indices) = self.load_indicies()
@@ -78,12 +79,21 @@ class CityDataSet():
 
         if self.dataset_type != 'test':
             # Load groudtruth images
-            search_lbl = os.path.join(self.city_dir,
-                                      'gtFine',
-                                      self.dataset_type,
-                                      '*','*_gtFine_labelTrainIds.png')
-            files_lbl = glob.glob(search_lbl)
-            files_lbl.sort()
+            if self.use_box:
+                # load gt boxes .npy for each image
+                search_lbl = os.path.join(self.city_dir,
+                                        'gtFine',
+                                        self.dataset_type,
+                                        '*','*_gtFine_box.npy')
+                files_lbl = glob.glob(search_lbl)
+                files_lbl.sort()
+            else:
+                search_lbl = os.path.join(self.city_dir,
+                                        'gtFine',
+                                        self.dataset_type,
+                                        '*','*_gtFine_labelTrainIds.png')
+                files_lbl = glob.glob(search_lbl)
+                files_lbl.sort()
 
         print('Training images:%d Ground Truth images:%d'%(len(files_img), len(files_lbl)))
         return (files_img, files_lbl)
@@ -113,7 +123,11 @@ class CityDataSet():
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
-            label = label.reshape(1, *label.shape)
+            if self.use_box:
+                # if use gt box, do not reshape
+                label = label
+            else:
+                label = label.reshape(1, *label.shape)
             self.idx += 1
 
         return (image,label)
@@ -142,19 +156,30 @@ class CityDataSet():
         """
         Load label image as 1 x height x width integer array of label indices.
         The leading singleton dimension is required by the loss.
+
+        If use boxes, the loaded label should be a .npy file, not a mask image
         """
         #print('Loading lbl:%s'%fname)
-        try:
-            img = Image.open(fname)
-        except IOError as e:
-            print('Warning: no image with name %s!!'%fname)
-            label = None
+        if self.use_box:
+            # if use box, return .npy directly
+            label = np.load(fname)
+            if not label:
+                # if the there are no usable boxes
+                return None
+            else:
+                return label
+        else:
+            try:
+                img = Image.open(fname)
+            except IOError as e:
+                print('Warning: no image with name %s!!'%fname)
+                label = None
+                return label
+
+            label = np.array(img, dtype=np.uint8)
+            label = label[np.newaxis, ...]
+
             return label
-
-        label = np.array(img, dtype=np.uint8)
-        label = label[np.newaxis, ...]
-
-        return label
 
     def pred_to_color(self):
         '''
