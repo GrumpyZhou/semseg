@@ -106,8 +106,14 @@ def generate_box(fname):
 
 	list_of_preposiboxes = get_precise_posiboxes_of_Mask(fname)
 	number_of_preposiboxes = len(list_of_preposiboxes)
-	loop_num = int(128 / number_of_preposiboxes)
-	loop_remainder = int(128 % number_of_preposiboxes)
+	if number_of_preposiboxes == 0:
+		loop_num = 0
+		loop_remainder = 0
+		print('No usable boxes for this image. Return None.')
+		return None
+	else:
+		loop_num = int(128 / number_of_preposiboxes)
+		loop_remainder = int(128 % number_of_preposiboxes)
 	invalid_remainder = 0
 	# Generating 128 positive and negative boxes, respectively.
 	#print('Number of tight box: ', number_of_preposiboxes)
@@ -134,6 +140,9 @@ def generate_box(fname):
 			box_data.append(nega_box)
 
 	# Generate for the remainder boxes.
+	if invalid_remainder == loop_num * number_of_preposiboxes:
+		print('No usable boxes for this image. Return None.')
+		return None
 	loop_remainder += invalid_remainder
 	#print('Number of positives: ', len(box_data['positive']))
 	#print('Number of negatives: ', len(box_data['negative']))
