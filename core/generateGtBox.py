@@ -35,24 +35,25 @@ def cal_precise_positive(img_mask, inst_num):
 
     np_indices = np.array(indices)
     if not np_indices.size:
-        return None, None, None, None
+        return None, None, None, None, None
 
     min_x = indices[0].min()
     min_y = indices[1].min()
     max_x = indices[0].max()
     max_y = indices[1].max()
+    obj_num = inst_num
 
-    return min_x, min_y, max_x, max_y
+    return min_x, min_y, max_x, max_y, obj_num
 
 def get_precise_posiboxes_of_Mask(fname):
     list_of_preposiboxes = []
     img, img_shape = Stat_Boxes.open_gt_file(fname)
-    print('The shape of the image is: ', img_shape)
+    #print('The shape of the image is: ', img_shape)
 
     for inst_num in range(MAX_instances):
-    	(x_min, y_min, x_max, y_max) = cal_precise_positive(img[:,:,1], inst_num+1)
+    	(x_min, y_min, x_max, y_max, obj_num) = cal_precise_positive(img[:,:,1], inst_num+1)
         if x_min is not None:
-            list_of_preposiboxes.append([x_min, y_min, x_max, y_max])
+            list_of_preposiboxes.append([x_min, y_min, x_max, y_max, obj_num])
 
     return list_of_preposiboxes
 
@@ -64,7 +65,7 @@ def is_positive(precise_pos_list, test_coord):
 
     for precise_coord in precise_pos_list:
     	# Compute the potential positive box coord
-    	pre_box_coord, pre_box_dim = generate_precise_posiBox(precise_coord)
+    	pre_box_coord, pre_box_dim, obj_num = generate_precise_posiBox(precise_coord)
     	if pre_box_coord is None:
     		continue
     	else:
@@ -98,9 +99,10 @@ def random_pair(rand_type):
 
 
 def generate_box(fname):
-	box_data = {}
-	box_data['positive'] = []
-	box_data['negative'] = []
+	#box_data = {}
+	box_data = []
+	#box_data['positive'] = []
+	#box_data['negative'] = []
 
 	list_of_preposiboxes = get_precise_posiboxes_of_Mask(fname)
 	number_of_preposiboxes = len(list_of_preposiboxes)
@@ -108,6 +110,9 @@ def generate_box(fname):
 	loop_remainder = int(128 % number_of_preposiboxes)
 	invalid_remainder = 0
 	# Generating 128 positive and negative boxes, respectively.
+	#print('Number of tight box: ', number_of_preposiboxes)
+	#print('Number of loop_num: ', loop_num)
+	#print('Number of loop_remainder: ', loop_remainder)
 	for index in range(loop_num):
 		for pre_coord in list_of_preposiboxes:
 			# Generate positive box
@@ -118,17 +123,22 @@ def generate_box(fname):
 				invalid_remainder += 1
 				continue
 			else:
-				box_data['positive'].append(posi_box)
+				#box_data['positive'].append(posi_box)
+				box_data.append(posi_box)
 
 			# Generate negative box
 			nega_box = generate_negative_box(pre_coord)
 			# If the negative box is not overlap with another positive box
 			while is_positive(list_of_preposiboxes, nega_box):
 				nega_box = generate_negative_box(pre_coord)
-			box_data['negative'].append(nega_box)
+			box_data.append(nega_box)
 
 	# Generate for the remainder boxes.
 	loop_remainder += invalid_remainder
+	#print('Number of positives: ', len(box_data['positive']))
+	#print('Number of negatives: ', len(box_data['negative']))
+	#print('Number of remainder: ', loop_remainder)
+	count = 0
 	while loop_remainder != 0:
 		for pre_coord in list_of_preposiboxes:
 			if loop_remainder == 0:
@@ -139,17 +149,20 @@ def generate_box(fname):
 				#loop_remainder += 1
 				continue
 			else:
-				box_data['positive'].append(posi_box)
+				box_data.append(posi_box)
+				count += 1
 
 			# Generate negative box
 			nega_box = generate_negative_box(pre_coord)
 			# If the negative box is not overlap with another positive box
 			while is_positive(list_of_preposiboxes, nega_box):
 				nega_box = generate_negative_box(pre_coord)
-			box_data['negative'].append(nega_box)
+			box_data.append(nega_box)
 			loop_remainder -= 1
 
-		return box_data
+	#print('Count is: ', count)
+	#print('Number of boxes in total: ', len(box_data))
+	return box_data
 
 def generate_positive_box(precise_posi_coord):
 	'''
@@ -158,7 +171,7 @@ def generate_positive_box(precise_posi_coord):
 	'''
 
 	rand_shift = random_pair('positive')
-	pre_box_coord, pre_box_dim = generate_precise_posiBox(precise_posi_coord)
+	pre_box_coord, pre_box_dim, obj_num = generate_precise_posiBox(precise_posi_coord)
 
 	if pre_box_coord is None:
 		return None
@@ -173,7 +186,7 @@ def generate_positive_box(precise_posi_coord):
 	if temp_x + pre_box_dim[0] >= 2048 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
 
-	posi_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]))
+	posi_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), 1, obj_num)
 	return posi_box
 
 def generate_precise_posiBox(precise_posi_coord):
@@ -184,6 +197,7 @@ def generate_precise_posiBox(precise_posi_coord):
 	y_min = precise_posi_coord[1]
 	x_max = precise_posi_coord[2]
 	y_max = precise_posi_coord[3]
+	obj_num = precise_posi_coord[4]
 
 	x_len = x_max - x_min
 	y_len = y_max - y_min
@@ -195,9 +209,9 @@ def generate_precise_posiBox(precise_posi_coord):
 	if pre_box_coord[0] >= 0 and pre_box_coord[1] >= 0:
 		if pre_box_coord[0] + pre_box_dim[0] < 2048:
 			if pre_box_coord[1] + pre_box_dim[1] < 1024:
-				return pre_box_coord, pre_box_dim
+				return pre_box_coord, pre_box_dim, obj_num
 
-	return None, None
+	return None, None, None
 
 def generate_negative_box(precise_posi_coord):
 	'''
@@ -206,7 +220,7 @@ def generate_negative_box(precise_posi_coord):
 	otherwise, return None.
 	'''
 	rand_shift = random_pair('negative')
-	pre_box_coord, pre_box_dim = generate_precise_posiBox(precise_posi_coord)
+	pre_box_coord, pre_box_dim, obj_num = generate_precise_posiBox(precise_posi_coord)
 
 	if pre_box_coord is None:
 		return None
@@ -221,7 +235,7 @@ def generate_negative_box(precise_posi_coord):
 	if temp_x + pre_box_dim[0] >= 2048 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
 
-	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]))
+	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), 0)
 	return nega_box
 
 def main():
@@ -236,7 +250,7 @@ def main():
     	box_data = generate_box(fname)
     	fname = fname.replace('mask.png', 'box.npy')
     	np.save(fname, box_data)
-    	print('write box file to %s'%fname)
+    	#print('write box file to %s'%fname)
 
 if __name__ == "__main__":
     main()

@@ -42,7 +42,7 @@ def get_file_list(cityscapesPath):
     return filesFine
 
 def open_gt_file(fname):
-    print('open file: ', fname)
+    #print('open file: ', fname)
     img = Image.open(fname)
     image = np.array(img, dtype=np.int8)
     (Height, Width, Channel) = np.shape(image)
