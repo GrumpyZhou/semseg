@@ -26,9 +26,11 @@ class CityDataSet():
         self.colored_save_path = params.get('colored_save_path', '../data/test_city_colored')
         self.labelIDs_save_path = params.get('labelIDs_save_path', '../data/test_city_labelIDs')
         self.use_box = params.get('use_box', True)
+        self.use_car = params.get('use_car', True)
+        self.use_person = params.get('use_person', False)
 
         # Load dataset indices
-        (self.img_indices, self.lbl_indices) = self.load_indicies()
+        (self.img_indices, self.lbl_indices, self.box_indices) = self.load_indicies()
 
         # Create mapping of (lable_name, id, color)
         self.labels = [
@@ -72,7 +74,8 @@ class CityDataSet():
 
         # Load training images
         search_img = os.path.join(self.city_dir,
-                                  'leftImg8bit',
+                                  'leftImg8bit_trainvaltest/leftImg8bit',
+                                  #'leftImg8bit'
                                   self.dataset_type,'*','*_leftImg8bit.png')
         files_img = glob.glob(search_img)
         files_img.sort()
@@ -80,13 +83,20 @@ class CityDataSet():
         if self.dataset_type != 'test':
             # Load groudtruth images
             if self.use_box:
-                # load gt boxes .npy for each image
+                # load gt mask for each image
                 search_lbl = os.path.join(self.city_dir,
                                         'gtFine',
                                         self.dataset_type,
-                                        '*','*_gtFine_box.npy')
+                                        '*','*_gtFine_mask.png')
                 files_lbl = glob.glob(search_lbl)
                 files_lbl.sort()
+                # load gt box .npy for each image
+                search_box = os.path.join(self.city_dir,
+                                        'gtFine',
+                                        self.dataset_type,
+                                        '*','*_gtFine_box.npy')
+                files_box = glob.glob(search_box)
+                files_box.sort()
             else:
                 search_lbl = os.path.join(self.city_dir,
                                         'gtFine',
@@ -96,7 +106,7 @@ class CityDataSet():
                 files_lbl.sort()
 
         print('Training images:%d Ground Truth images:%d'%(len(files_img), len(files_lbl)))
-        return (files_img, files_lbl)
+        return (files_img, files_lbl, files_box)
 
     def next_batch(self):
         """
@@ -119,18 +129,24 @@ class CityDataSet():
 
         if self.dataset_type == 'test':
             self.idx += 1
-            return (image, None)
+            return (image, None, None)
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
+            box_fname = self.box_indices[self.idx]
+            box = self.load_box(box_fname)
             if self.use_box:
                 # if use gt box, do not reshape
+                #label = label.reshape(1, *label.shape)
                 label = label
+                box = box
             else:
-                label = label.reshape(1, *label.shape)
+                #label = label.reshape(1, *label.shape)
+                label = label
+                box = None
             self.idx += 1
 
-        return (image,label)
+        return (image,label,box)
 
     def load_image(self, fname):
         """
@@ -140,7 +156,7 @@ class CityDataSet():
         - subtract mean
         - transpose to channel x height x width order
         """
-        #print('Loading img:%s'%fname)
+        print('Loading img:%s'%fname)
         try:
             img = Image.open(fname)
         except IOError as e:
@@ -157,29 +173,41 @@ class CityDataSet():
         Load label image as 1 x height x width integer array of label indices.
         The leading singleton dimension is required by the loss.
 
-        If use boxes, the loaded label should be a .npy file, not a mask image
+        If use boxes, we should load both gt mask and gt box
         """
-        #print('Loading lbl:%s'%fname)
+        print('Loading lbl:%s'%fname)
+        try:
+            img = Image.open(fname)
+        except IOError as e:
+            print('Warning: no image with name %s!!'%fname)
+            label = None
+            return label
+
+        label = np.array(img, dtype=np.uint8)
+        label = label[np.newaxis, ...]
+
+        if self.use_car:
+            label = label[:,:,:,1]
+            label = label[..., np.newaxis]
+
+        return label
+
+    def load_box(self, fname):
+        """
+        Load gt box
+        """
+        print('Loading box:%s'%fname)
         if self.use_box:
-            # if use box, return .npy directly
-            label = np.load(fname)
-            if not label:
+            box = np.load(fname)
+
+            if not box.any():
                 # if the there are no usable boxes
+                print('No usable gt box for %s'%fname)
                 return None
             else:
-                return label
-        else:
-            try:
-                img = Image.open(fname)
-            except IOError as e:
-                print('Warning: no image with name %s!!'%fname)
-                label = None
-                return label
+                return box
 
-            label = np.array(img, dtype=np.uint8)
-            label = label[np.newaxis, ...]
-
-            return label
+        return None
 
     def pred_to_color(self):
         '''
