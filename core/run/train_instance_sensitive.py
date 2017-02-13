@@ -65,7 +65,7 @@ with tf.Session() as sess:
     # Be aware of loaded data type....
     train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
     # TODO: dimension of placeholder of gt box.
-    train_box = tf.placeholder(tf.int32, shape=[None])
+    train_box = tf.placeholder(tf.int32, shape=[2,3,2])
 
     # create model and train op
     [train_op, loss] = fcn.train(params=params, image=train_img, truth=train_box, scale_min=fcn_scale, save_var=True)
