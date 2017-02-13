@@ -180,13 +180,13 @@ def generate_positive_box(precise_posi_coord):
 	temp_x = pre_box_coord[0] + rand_shift
 	temp_y = pre_box_coord[1] + rand_shift
 
-	if temp_y + pre_box_dim[1] >= 1024 or temp_y < 0:
+	if temp_y + pre_box_dim[1] >= 2048 or temp_y < 0:
 		# shift to the other direction
 		temp_y = pre_box_coord[1] - rand_shift
-	if temp_x + pre_box_dim[0] >= 2048 or temp_x < 0:
+	if temp_x + pre_box_dim[0] >= 1024 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
 
-	posi_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), 1, obj_num)
+	posi_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), (1, obj_num))
 	return posi_box
 
 def generate_precise_posiBox(precise_posi_coord):
@@ -207,8 +207,8 @@ def generate_precise_posiBox(precise_posi_coord):
 
 	# Check the box is within the image boundary
 	if pre_box_coord[0] >= 0 and pre_box_coord[1] >= 0:
-		if pre_box_coord[0] + pre_box_dim[0] < 2048:
-			if pre_box_coord[1] + pre_box_dim[1] < 1024:
+		if pre_box_coord[0] + pre_box_dim[0] < 1024:
+			if pre_box_coord[1] + pre_box_dim[1] < 2048:
 				return pre_box_coord, pre_box_dim, obj_num
 
 	return None, None, None
@@ -229,13 +229,13 @@ def generate_negative_box(precise_posi_coord):
 	temp_x = pre_box_coord[0] + rand_shift
 	temp_y = pre_box_coord[1] + rand_shift
 
-	if temp_y + pre_box_dim[1] >= 1024 or temp_y < 0:
+	if temp_y + pre_box_dim[1] >= 2048 or temp_y < 0:
 		# shift to the other direction
 		temp_y = pre_box_coord[1] - rand_shift
-	if temp_x + pre_box_dim[0] >= 2048 or temp_x < 0:
+	if temp_x + pre_box_dim[0] >= 1024 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
 
-	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), 0)
+	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), (0,-1))
 	return nega_box
 
 def main():
