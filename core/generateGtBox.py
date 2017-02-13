@@ -246,10 +246,15 @@ def main():
     	sys.exit('No data path found')
 
     files = Stat_Boxes.get_file_list(cityscapesPath)
+    progress = 0
+    print("Progress: {:>3} %".format( progress * 100 / len(files) ))
     for fname in files:
     	box_data = generate_box(fname)
     	fname = fname.replace('mask.png', 'box.npy')
     	np.save(fname, box_data)
+    	progress += 1
+    	print("\rProgress: {:>3} %".format( progress * 100 / len(files) ))
+    	sys.stdout.flush()
     	#print('write box file to %s'%fname)
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@ from scipy.misc import toimage
 from scipy.misc import imsave
 import matplotlib.pyplot as plt
 
-os.environ["CITYSCAPES_DATASET"] = "/Users/WY/Downloads/CityDatabase"
-#os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
+#os.environ["CITYSCAPES_DATASET"] = "/Users/WY/Downloads/CityDatabase"
+os.environ["CITYSCAPES_DATASET"] = "./data/CityDatabase"
 
 MAX_instances = 30
 
