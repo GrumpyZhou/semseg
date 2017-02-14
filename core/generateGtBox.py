@@ -17,7 +17,7 @@ import glob
 from scipy import sparse
 from scipy.misc import toimage
 from scipy.misc import imsave
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import Stat_Boxes
 
@@ -189,13 +189,36 @@ def generate_positive_box(precise_posi_coord):
 	temp_x = pre_box_coord[0] + rand_shift
 	temp_y = pre_box_coord[1] + rand_shift
 
+	# Adjust box location to fit training
+	x_remainder = temp_x % 8
+	y_remainder = temp_y % 8
+	temp_x += cal_coord_adjust(x_remainder)
+	temp_y += cal_coord_adjust(y_remainder)
+
+
 	if temp_y + pre_box_dim[1] >= 2048 or temp_y < 0:
 		# shift to the other direction
 		temp_y = pre_box_coord[1] - rand_shift
+		y_remainder = temp_y % 8
+		if np.sign(-rand_shift) >= 0:
+			temp_y = temp_y + 8 - y_remainder
+		else:
+			temp_y = temp_y - y_remainder
 	if temp_x + pre_box_dim[0] >= 1024 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
+		x_remainder = temp_x % 8
+		if np.sign(-rand_shift) >= 0:
+			temp_x = temp_x + 8 - x_remainder
+		else:
+			temp_x = temp_x - x_remainder
 
 	posi_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), (1, obj_num))
+
+	if posi_box[1][0] % 24 !=0 or posi_box[1][1] % 24 !=0:
+		sys.exit('The posi box size is not a multiple of 24')
+	if posi_box[0][0] % 8 !=0 or posi_box[0][1] % 8 !=0:
+		sys.exit('The posi box location is not a multiple of 8')
+
 	return posi_box
 
 def generate_precise_posiBox(precise_posi_coord):
@@ -210,9 +233,24 @@ def generate_precise_posiBox(precise_posi_coord):
 
 	x_len = x_max - x_min
 	y_len = y_max - y_min
-	pre_box_coord = (x_min - 32, y_min - 32)
-	pre_box_dim = (x_len + 64, y_len + 64)
+	pre_box_coord_t = [x_min - 32, y_min - 32]
+	pre_box_dim_t = [x_len + 64, y_len + 64]
 
+	# Modify box size to fit training
+	# Adjusting box size
+	width_remainder = pre_box_dim_t[0] % 24
+	height_remainder = pre_box_dim_t[1] % 24
+	shift_coord_x = int(width_remainder / 2)
+	shift_coord_y = int(height_remainder / 2)
+	#shrinking the size
+	pre_box_dim_t[0] -= width_remainder
+	pre_box_dim_t[1] -= height_remainder
+	pre_box_coord_t[0] += shift_coord_x
+	pre_box_coord_t[1] += shift_coord_y
+
+	# To tuple
+	pre_box_coord = (pre_box_coord_t[0], pre_box_coord_t[1])
+	pre_box_dim = (pre_box_dim_t[0], pre_box_dim_t[1])
 
 	# Check the box is within the image boundary
 	if pre_box_coord[0] >= 0 and pre_box_coord[1] >= 0:
@@ -221,6 +259,16 @@ def generate_precise_posiBox(precise_posi_coord):
 				return pre_box_coord, pre_box_dim, obj_num
 
 	return None, None, None
+
+def cal_coord_adjust(remainder):
+
+	if remainder <= 4 and remainder >=0:
+		return -remainder
+	elif remainder < 8:
+		return 8-remainder
+	else:
+		sys.exit('Invalid x_remainder or y_remainder!')
+
 
 def generate_negative_box(precise_posi_coord):
 	'''
@@ -238,13 +286,35 @@ def generate_negative_box(precise_posi_coord):
 	temp_x = pre_box_coord[0] + rand_shift
 	temp_y = pre_box_coord[1] + rand_shift
 
+	# Adjust box location to fit training
+	x_remainder = temp_x % 8
+	y_remainder = temp_y % 8
+	temp_x += cal_coord_adjust(x_remainder)
+	temp_y += cal_coord_adjust(y_remainder)
+
 	if temp_y + pre_box_dim[1] >= 2048 or temp_y < 0:
 		# shift to the other direction
 		temp_y = pre_box_coord[1] - rand_shift
+		y_remainder = temp_y % 8
+		if np.sign(-rand_shift) >= 0:
+			temp_y = temp_y + 8 - y_remainder
+		else:
+			temp_y = temp_y - y_remainder
 	if temp_x + pre_box_dim[0] >= 1024 or temp_x < 0:
 		temp_x = pre_box_coord[0] - rand_shift
+		x_remainder = temp_x % 8
+		if np.sign(-rand_shift) >= 0:
+			temp_x = temp_x + 8 - x_remainder
+		else:
+			temp_x = temp_x - x_remainder
 
 	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), (0,-1))
+
+	if nega_box[1][0] % 24 !=0 or nega_box[1][1] % 24 !=0:
+		sys.exit('The nega box size is not a multiple of 24')
+	if nega_box[0][0] % 8 !=0 or nega_box[0][1] % 8 !=0:
+		sys.exit('The nega box location is not a multiple of 8')
+
 	return nega_box
 
 def main():
