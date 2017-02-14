@@ -192,15 +192,18 @@ class InstanceSensitiveFCN8s:
         position = tf.constant(object_pos, tf.int32) # for indexing within tf
 
         # generate top_k instance proposals
+        reuse_scope = False
         for i in range(top_k):
             pos = position[indice[i]]
             sub_score = tf.slice(inst_score, [0, pos[0], pos[1], 0], [1, sz, sz, inst_shape[3]])
             instance = assemble(sz, sz, sub_score, k=3)
 
             # Upsample instance proposal to original size *8
-            instance = nn.upscore_layer(instance, {},
-                                    "upinst", tf.shape([1, w*8, h*8, 1]), num_class=1,
-                                    ksize=16, stride=8, var_dict=None)
+            if i > 0: 
+                reuse_scope = True
+            instance = nn.upscore_layer(instance, {}, "upinst_inf", 
+                                        tf.shape([1, w*8, h*8, 1]), num_class=1,
+                                        ksize=16, stride=8, reuse_scope=reuse_scope, var_dict=None)
 
             proposal_map.append(instance)
 
@@ -208,7 +211,7 @@ class InstanceSensitiveFCN8s:
         return proposal_map
 
 
-    def train(self, params, image, gt_mask, gt_box, num_box = 256, save_var=True):
+    def train(self, image, gt_mask, gt_box, learning_rate=1e-6, num_box = 256, save_var=True):
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
@@ -217,14 +220,11 @@ class InstanceSensitiveFCN8s:
         # Build basic model
         model = self._build_model(image, is_train=True, save_var=save_var)
 
-        # Get car slice
-        # gt_mask_list = tf.split(3, self.num_gt_class, gt_masks)
-        # gt_mask = gt_mask_list[1]
-
         # Assemble instance proposals during training with given location and size of bounding boxs
         inst_score = model['inst_score']
         obj_score = model['obj_score']
         loss = 0
+        reuse_scope = False
 
         for k in range(num_box):
             # box location and size
@@ -241,62 +241,55 @@ class InstanceSensitiveFCN8s:
             w_s =  tf.cast(tf.floor(w / 8), tf.int32)
             h_s =  tf.cast(tf.floor(h / 8), tf.int32)
 
-            obj_score_gt = tf.cond(cond, lambda: tf.constant(1, tf.int32), lambda: tf.constant(0, tf.int32))
-            # We should use x = x / 8, y = y / 8 to produce predicted score
-            #obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x, y, 0], [1, w_s, h_s, 1]))
+            obj_score_gt = tf.cond(cond, lambda: tf.constant(1, tf.float32), lambda: tf.constant(0, tf.float32))
             x_s = tf.cast(tf.floor(x / 8), tf.int32)
             y_s = tf.cast(tf.floor(y / 8), tf.int32)
             obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x_s, y_s, 0], [1, w_s, h_s, 1]))
-            obj_score_pred = tf.to_int32(obj_score_pred)
+            #obj_score_pred = tf.to_int32(obj_score_pred)
             obj_loss = tf.abs(obj_score_gt - obj_score_pred)
-            obj_loss = tf.cast(obj_loss, tf.float32)
+            #obj_loss = tf.cast(obj_loss, tf.float32)
 
             # if it is a positive sample, calculate instance loss else ignore
-            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id), lambda: tf.constant(0, tf.float32))
+            if k > 0:
+                reuse_scope = True
+            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id, reuse_scope), lambda: tf.constant(0, tf.float32))
             loss += obj_loss + inst_loss
 
-        train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
+        train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
 
-    def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id):
+    def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id, reuse_scope=True):
 
         # generate instance proposal
         inst_shape = tf.shape(inst_score)
         w_s =  tf.cast(tf.floor(w / 8), tf.int32)
         h_s =  tf.cast(tf.floor(h / 8), tf.int32)
-        # We should use x = x / 8, y = y / 8 to produce sub_score
-        #sub_score = tf.slice(inst_score, [0, x, y, 0], [1, w_s, h_s, inst_shape[3]])
         x_s = tf.cast(tf.floor(x / 8), tf.int32)
         y_s = tf.cast(tf.floor(y / 8), tf.int32)
         sub_score = tf.slice(inst_score, [0, x_s, y_s, 0], [1, w_s, h_s, inst_shape[3]])
         instance = self.assemble(w_s, h_s, sub_score)
 
         # Upsample instance proposal to original size *8
+
         instance = nn.upscore_layer(instance, {},
-                                    "upinst", [1, w, h, 1], num_class=1,
-                                    ksize=16, stride=8, var_dict=None)
+                                    "upinst_train", [1, w, h, 1], num_class=1,
+                                    ksize=16, stride=8, reuse_scope=reuse_scope, var_dict=None)
 
         # generate gt instance
         instance_gt_ = tf.slice(gt_mask, [0, x, y, 0], [1, w, h,1])
-        # tf.constant input parameter should be: a scalar and instance_gt_
-        #indices = tf.where(tf.equal(tf.constant(obj_id, tf.int32, shape=[1, w, h, 1]), instance_gt))
         indices = tf.where(tf.equal(instance_gt_, obj_id))
-        #val = tf.ones((tf.shape(tf.shape(indices)[0], tf.float32)))
-        #val = tf.ones((tf.shape(indices)[0],), tf.float32)
         sparse_val = tf.constant(1, dtype=tf.float32)
         instance_gt_shape = tf.to_int64([1, w, h, 1])
         instance_gt_shape = tf.pack(instance_gt_shape)
         instance_gt = tf.sparse_to_dense(indices, instance_gt_shape, sparse_val)
 
-        # !! The shape of proposal might be different from gt, to be settled!!
-        # missing tf.reduce_mean() ???
-        return tf.nn.sigmoid_cross_entropy_with_logits(targets=instance_gt, logits=instance)
+        return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=instance_gt, logits=instance))
 
 
     def assemble(self, w, h, score, k=3):
         """
         Assemble  k*k parts across last dimension to make one instance proposal
-        Return a tensor with the same shape as ????? to be settle
+        Return a tensor with the shape [1, w, h, 1] 
         """
         dx = tf.floor(w / k)
         dy = tf.floor(h / k)
@@ -308,9 +301,7 @@ class InstanceSensitiveFCN8s:
                 c = tf.constant(i*k+j, tf.int32)
                 parts.append(tf.slice(score, [0, i*dx, j*dy, c], [1, dx, dy, 1]))
 
-        # Testing suggests that this operation didn't produce expected result
-        #instance = tf.concat(2, parts)
-        # instead concat along x first, then concat along y
+        # concat along x first, then concat along y
         concated_x = []
         for i in range(k*k):
             parts[i] = tf.reshape(parts[i], [dx,dy])
