@@ -45,7 +45,7 @@ train_data_config = {'city_dir':"../data/CityDatabase",
 fcn_scale = 'fcn8s'
 
 # TODO: adjust params according to instance-sensitive network
-params = {'num_classes': 20, 'rate': 1e-6,
+params = {'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
           #'trained_weight_path':'../data/val_weights/city_fcn8s_skip_100000.npy',
@@ -59,7 +59,6 @@ train_iter = 1
 val_step = 1
 
 # Logging config
-#print('Training config: fcn_scale %s, iters %d'%(fcn_scale, train_iter))
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
     fcn = InstanceSensitiveFCN8s(params['trained_weight_path'])
@@ -71,7 +70,7 @@ with tf.Session() as sess:
     train_mask = tf.placeholder(tf.int32, shape=[1, None, None, 1])
 
     # create model and train op
-    [train_op, loss] = fcn.train(params=params, image=train_img, gt_mask=train_mask, gt_box=train_box, save_var=True)
+    [train_op, loss] = fcn.train(image=train_img, gt_mask=train_mask, gt_box=train_box, learning_rate=params['rate'], num_box=256, save_var=True)
     var_dict_to_train = fcn.var_dict
     #tf.scalar_summary('train_loss', loss)
 
@@ -95,6 +94,7 @@ with tf.Session() as sess:
                            train_box: next_pair_box,
                            train_mask: next_pair_label}
         sess.run(train_op, train_feed_dict)
+        print('loss %f'% sess.run(loss, train_feed_dict))
         # Save loss value
         # if i % 100 == 0:
         #     summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
@@ -112,29 +112,5 @@ with tf.Session() as sess:
   #               print("trained weights saved: ", fpath)
     print('Finished training')
 
-    # Test
-    # print('Start training...')
-    # for i in range(train_iter+1):
-    #     next_pair = train_dataset.next_batch()
-    #     next_pair_image = next_pair[0]
-    #     next_pair_label = next_pair[1]
-    #     next_pair_box = next_pair[2]
-    #     print('Shape of next_pair_image: ', next_pair_image.shape)
-    #     print('Shape of next_pair_label: ', next_pair_label.shape)
-    #     print('Shape of next_pair_box: ', next_pair_box.shape)
-
-    #     output_img = train_img
-    #     output_box = train_box
-    #     output_mask = train_mask
-
-    #     output = (output_img,output_box,output_mask)
-
-    #     my_out = sess.run(output, feed_dict={train_img: next_pair_image, train_box: next_pair_box, train_mask: next_pair_label})
-    #     print('Shape of feed image: ', my_out[0].shape)
-    #     print('Shape of feed box: ', my_out[1].shape)
-    #     print('Shape of feed mask: ', my_out[2].shape)
-
-    #     print('The first box: ', my_out[1][0])
-    #     print('The second box: ', my_out[1][1])
 
 
