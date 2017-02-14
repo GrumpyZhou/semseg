@@ -10,14 +10,7 @@ from __future__ import print_function
 import sys
 sys.path.append("..")
 
-import skimage
-import skimage.io
-import skimage.transform
-
 import os
-import scipy as scp
-import scipy.misc
-
 import numpy as np
 import tensorflow as tf
 
