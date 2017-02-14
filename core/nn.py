@@ -40,10 +40,14 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
     return conv_out
 
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
-def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_dict=None):
+def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, reuse_scope=False, var_dict=None):
     strides = [1, stride, stride, 1]
     with tf.variable_scope(name):
-        print('Layer name: %s' % name)          
+        if not reuse_scope:
+            print('Layer name: %s' % name) 
+        else:
+            tf.get_variable_scope().reuse_variables() 
+            
         in_features = x.get_shape()[3].value
         if shape is None:
             # Compute shape out of x
@@ -61,7 +65,7 @@ def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_d
         num_input = ksize * ksize * in_features / stride
         stddev = (2 / num_input)**0.5
 
-        kernel = get_deconv_kernel(feed_dict, name, f_shape)
+        kernel = get_deconv_kernel(feed_dict, name, f_shape, reuse_scope)
         deconv = tf.nn.conv2d_transpose(x, kernel, output_shape,
                                         strides=strides, padding='SAME')
     if var_dict is not None:
@@ -96,9 +100,11 @@ def get_bias(feed_dict, feed_name, shape):
     var = tf.get_variable(name="bias", initializer=init, shape=shape)
     return var
     
-def get_deconv_kernel(feed_dict, feed_name, f_shape):
+def get_deconv_kernel(feed_dict, feed_name, f_shape, reuse_scope=False):
     if not feed_dict.has_key(feed_name):
-        print("No matched deconv_kernel %s, use bilinear interpolation " % feed_name)
+        if not reuse_scope:
+            print("No matched deconv_kernel %s, use bilinear interpolation " % feed_name)
+            
         # Bilinear interpolation
         width = f_shape[0]
         heigh = f_shape[0]
@@ -117,7 +123,7 @@ def get_deconv_kernel(feed_dict, feed_name, f_shape):
         print('Load deconv_kernel %s with shape: %s' % (feed_name, kernel.shape))
         
     init = tf.constant_initializer(value=kernel, dtype=tf.float32)
-    var = tf.get_variable(name="upscore_kernel", initializer=init, shape=kernel.shape)
+    var = tf.get_variable(name="upscore_kernel", initializer=init, shape=kernel.shape)        
     return var
 
 """
