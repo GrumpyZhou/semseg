@@ -27,7 +27,7 @@ class InstanceSensitiveFCN8s:
 
         # used to save trained weights
         self.var_dict = {}
-    
+
 
     def _build_model(self, image, is_train=False, save_var=False):
 
@@ -40,8 +40,8 @@ class InstanceSensitiveFCN8s:
             var_dict = self.var_dict
         else:
             # During inference or validation, no need to save weights
-            var_dict = None 
-        
+            var_dict = None
+
         # Base channel: build fcn8s and produce feature maps with shape[H, W, 512]
         model['conv1_1'] = nn.conv_layer(image, feed_dict, "conv1_1", var_dict=var_dict)
         model['conv1_2'] = nn.conv_layer(model['conv1_1'], feed_dict, "conv1_2", var_dict=var_dict)
@@ -84,17 +84,17 @@ class InstanceSensitiveFCN8s:
                                        keep_prob=0.5, var_dict=var_dict)
 
         # Skip feature fusion
-        model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr",
+        model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr_inst",
                                           shape=[1, 1, 4096, 512], relu=False,
                                           dropout=False, var_dict=var_dict)
 
         # Upsample: score_fr*2
-        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s",
+        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s_inst",
                                        tf.shape(model['pool4']), num_class=512,
                                        ksize=4, stride=2, var_dict=var_dict)
         # Fuse upscore_fr_2s + score_pool4
         in_features = model['pool4'].get_shape()[3].value
-        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4",
+        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4_inst",
                                     shape=[1, 1, in_features, 512],
                                     relu=False, dropout=False, var_dict=var_dict)
 
@@ -102,35 +102,35 @@ class InstanceSensitiveFCN8s:
 
 
         # Upsample fuse_pool4*2
-        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s",
+        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s_inst",
                                             tf.shape(model['pool3']), num_class=512,
                                             ksize=4, stride=2, var_dict=var_dict)
 
         # Fuse upscore_pool4_2s + score_pool3
         in_features = model['pool3'].get_shape()[3].value
-        score_pool3 = nn.conv_layer(model['pool3'], feed_dict, "score_pool3",
+        score_pool3 = nn.conv_layer(model['pool3'], feed_dict, "score_pool3_inst",
                                     shape=[1, 1, in_features, 512],
                                     relu=False, dropout=False, var_dict=var_dict)
 
         model['score_out'] = tf.add(upscore_pool4_2s, score_pool3)
 
-        
+
         # Instance assembling score
         model['inst_conv1'] = nn.conv_layer(model['score_out'], feed_dict, "inst_conv1",
-                                            shape=[1, 1, 512, 512],relu=False, 
-                                            dropout=False, var_dict=var_dict)
-        
-        model['inst_score'] = nn.conv_layer(model['inst_conv1'], feed_dict, "inst_conv2",
-                                            shape=[3, 3, 512, 9],relu=False, 
+                                            shape=[1, 1, 512, 512],relu=False,
                                             dropout=False, var_dict=var_dict)
 
-        # Objectness score 
-        model['obj_conv1'] = nn.conv_layer(model['score_out'], feed_dict, "obj_conv1",
-                                            shape=[3, 3, 512, 512],relu=False, 
+        model['inst_score'] = nn.conv_layer(model['inst_conv1'], feed_dict, "inst_conv2",
+                                            shape=[3, 3, 512, 9],relu=False,
                                             dropout=False, var_dict=var_dict)
-        
+
+        # Objectness score
+        model['obj_conv1'] = nn.conv_layer(model['score_out'], feed_dict, "obj_conv1",
+                                            shape=[3, 3, 512, 512],relu=False,
+                                            dropout=False, var_dict=var_dict)
+
         model['obj_score'] = nn.conv_layer(model['obj_conv1'], feed_dict, "obj_conv2",
-                                            shape=[1, 1, 512, 1],relu=False, 
+                                            shape=[1, 1, 512, 1],relu=False,
                                             dropout=False, var_dict=var_dict)
 
         """
@@ -144,7 +144,7 @@ class InstanceSensitiveFCN8s:
         print('Instance-sensitive-fcn8s model is builded successfully!')
         print('Model: %s' % str(model.keys()))
         return model
-    
+
     def inference(self, image, top_k=5, sz=21, stride=8, w=128, h=256):
         """
         Input: image
@@ -157,15 +157,15 @@ class InstanceSensitiveFCN8s:
 
         """Assemble instance proposals during inference by densely sliding to generate proposals """
         obj_score = model['obj_score']
-        inst_score = model['inst_score'] 
-        inst_shape = tf.shape(inst_score)        
-               
+        inst_score = model['inst_score']
+        inst_shape = tf.shape(inst_score)
+
         ix = int((w - sz) / stride)
         iy = int((h - sz) / stride)
         proposal_map = []
         object_pos = []
         object_scores = []
-    
+
         # Sliding over score map
         pos_x = 0
         for i in range(ix):
@@ -175,20 +175,20 @@ class InstanceSensitiveFCN8s:
                 object_pos.append((pos_x, pos_y))
 
                 # calculate objectness score
-                objectness = tf.slice(obj_score, [0, pos_x, pos_y, 0], [1, sz, sz, 1])   
+                objectness = tf.slice(obj_score, [0, pos_x, pos_y, 0], [1, sz, sz, 1])
                 score = tf.reshape(tf.reduce_mean(objectness), [1]) # reshape is necessary to perform for tf.concat
                 object_scores.append(score)
-                
+
                 pos_y += stride + sz
                 if ((pos_y + sz) >= h):
                     break
-                
-            pos_x += stride + sz 
+
+            pos_x += stride + sz
             if ((pos_x + sz) >= w):
                 break
-            
+
         # get top_k result, returns: [vals, indices]
-        indice = tf.nn.top_k(tf.concat(0,object_scores), top_k)[1] 
+        indice = tf.nn.top_k(tf.concat(0,object_scores), top_k)[1]
         position = tf.constant(object_pos, tf.int32) # for indexing within tf
 
         # generate top_k instance proposals
@@ -196,18 +196,18 @@ class InstanceSensitiveFCN8s:
             pos = position[indice[i]]
             sub_score = tf.slice(inst_score, [0, pos[0], pos[1], 0], [1, sz, sz, inst_shape[3]])
             instance = assemble(sz, sz, sub_score, k=3)
-            
-            # Upsample instance proposal to original size *8 
-            instance = nn.upscore_layer(instance, feed_dict={},
+
+            # Upsample instance proposal to original size *8
+            instance = nn.upscore_layer(instance, {},
                                     "upinst", tf.shape([1, w*8, h*8, 1]), num_class=1,
                                     ksize=16, stride=8, var_dict=None)
 
-            proposal_map.append(instance)        
+            proposal_map.append(instance)
 
         print('Total proposals %d'%len(proposal_list))
         return proposal_map
 
-    
+
     def train(self, params, image, gt_mask, gt_box, num_box = 256, save_var=True):
         '''
         Input
@@ -215,7 +215,7 @@ class InstanceSensitiveFCN8s:
         gt_masks: stacked instance_masks, shape=[1, h, w, num_gt_class], tf.int32
         '''
         # Build basic model
-        model = self._build_model(image, is_train=True, save_var=save_var):
+        model = self._build_model(image, is_train=True, save_var=save_var)
 
         # Get car slice
         # gt_mask_list = tf.split(3, self.num_gt_class, gt_masks)
@@ -225,55 +225,72 @@ class InstanceSensitiveFCN8s:
         inst_score = model['inst_score']
         obj_score = model['obj_score']
         loss = 0
-        
+
         for k in range(num_box):
             # box location and size
             x = gt_box[k][0][0]
             y = gt_box[k][0][1]
             w = gt_box[k][1][0]
             h = gt_box[k][1][1]
-            
+
             obj_score_gt = gt_box[k][2][0]
-            obj_id = gt_box[k][2][1]               
+            obj_id = gt_box[k][2][1]
             cond = tf.equal(1, obj_score_gt)
-            
+
             # if it is a positive sample, score_gt is 1 else 0
             w_s =  tf.cast(tf.floor(w / 8), tf.int32)
             h_s =  tf.cast(tf.floor(h / 8), tf.int32)
 
             obj_score_gt = tf.cond(cond, lambda: tf.constant(1, tf.int32), lambda: tf.constant(0, tf.int32))
-            obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x, y, 0], [1, w_s, h_s, 1]))
+            # We should use x = x / 8, y = y / 8 to produce predicted score
+            #obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x, y, 0], [1, w_s, h_s, 1]))
+            x_s = tf.cast(tf.floor(x / 8), tf.int32)
+            y_s = tf.cast(tf.floor(y / 8), tf.int32)
+            obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x_s, y_s, 0], [1, w_s, h_s, 1]))
+            obj_score_pred = tf.to_int32(obj_score_pred)
             obj_loss = tf.abs(obj_score_gt - obj_score_pred)
+            obj_loss = tf.cast(obj_loss, tf.float32)
 
-            # if it is a positive sample, calculate instance loss else ignore 
-            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id), lambda: tf.constant(0, tf.int32))
+            # if it is a positive sample, calculate instance loss else ignore
+            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id), lambda: tf.constant(0, tf.float32))
             loss += obj_loss + inst_loss
 
         train_step = tf.train.AdamOptimizer(params['rate']).minimize(loss)
         return train_step, loss
 
     def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id):
-        
+
         # generate instance proposal
         inst_shape = tf.shape(inst_score)
         w_s =  tf.cast(tf.floor(w / 8), tf.int32)
         h_s =  tf.cast(tf.floor(h / 8), tf.int32)
-        sub_score = tf.slice(inst_score, [0, x, y, 0], [1, w_s, h_s, inst_shape[3]])
+        # We should use x = x / 8, y = y / 8 to produce sub_score
+        #sub_score = tf.slice(inst_score, [0, x, y, 0], [1, w_s, h_s, inst_shape[3]])
+        x_s = tf.cast(tf.floor(x / 8), tf.int32)
+        y_s = tf.cast(tf.floor(y / 8), tf.int32)
+        sub_score = tf.slice(inst_score, [0, x_s, y_s, 0], [1, w_s, h_s, inst_shape[3]])
         instance = self.assemble(w_s, h_s, sub_score)
-    
-        # Upsample instance proposal to original size *8 
-        instance = nn.upscore_layer(instance, feed_dict={},
-                                    "upinst", tf.shape([1, w, h, 1]), num_class=1,
+
+        # Upsample instance proposal to original size *8
+        instance = nn.upscore_layer(instance, {},
+                                    "upinst", [1, w, h, 1], num_class=1,
                                     ksize=16, stride=8, var_dict=None)
 
         # generate gt instance
         instance_gt_ = tf.slice(gt_mask, [0, x, y, 0], [1, w, h,1])
-        indices = tf.where(tf.equal(tf.constant(obj_id, tf.int32, shape=[1, w, h, 1]), instance_gt))
-        val = tf.ones((tf.shape(tf.shape(indices)[0], tf.float32))
-        instance_gt = tf.sparse_to_dense(indices, [1, w, h, 1], val)   
-        
+        # tf.constant input parameter should be: a scalar and instance_gt_
+        #indices = tf.where(tf.equal(tf.constant(obj_id, tf.int32, shape=[1, w, h, 1]), instance_gt))
+        indices = tf.where(tf.equal(instance_gt_, obj_id))
+        #val = tf.ones((tf.shape(tf.shape(indices)[0], tf.float32)))
+        #val = tf.ones((tf.shape(indices)[0],), tf.float32)
+        sparse_val = tf.constant(1, dtype=tf.float32)
+        instance_gt_shape = tf.to_int64([1, w, h, 1])
+        instance_gt_shape = tf.pack(instance_gt_shape)
+        instance_gt = tf.sparse_to_dense(indices, instance_gt_shape, sparse_val)
+
         # !! The shape of proposal might be different from gt, to be settled!!
-        return tf.nn.sigmoid_cross_entropy_with_logits(labels=instance_gt, logits=instance)
+        # missing tf.reduce_mean() ???
+        return tf.nn.sigmoid_cross_entropy_with_logits(targets=instance_gt, logits=instance)
 
 
     def assemble(self, w, h, score, k=3):
@@ -289,9 +306,19 @@ class InstanceSensitiveFCN8s:
         for i in range(k):
             for j in range(k):
                 c = tf.constant(i*k+j, tf.int32)
-                parts.append(tf.slice(inst_score, [0, i*dx, j*dy, c], [1, dx, dy, 1]))
-        
-        instance = tf.concat(2, parts)
+                parts.append(tf.slice(score, [0, i*dx, j*dy, c], [1, dx, dy, 1]))
+
+        # Testing suggests that this operation didn't produce expected result
+        #instance = tf.concat(2, parts)
+        # instead concat along x first, then concat along y
+        concated_x = []
+        for i in range(k*k):
+            parts[i] = tf.reshape(parts[i], [dx,dy])
+        for i in range(k):
+            temp_x = tf.concat(1,[parts[i*3+0], parts[i*3+1], parts[i*3+2]])
+            concated_x.append(temp_x)
+        instance = tf.concat(0,concated_x)
+
         instance = tf.reshape(instance, [1, dx*k, dy*k, 1])
         return instance
 
