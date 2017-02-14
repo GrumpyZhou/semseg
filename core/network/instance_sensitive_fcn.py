@@ -192,18 +192,15 @@ class InstanceSensitiveFCN8s:
         position = tf.constant(object_pos, tf.int32) # for indexing within tf
 
         # generate top_k instance proposals
-        reuse_scope = False
         for i in range(top_k):
             pos = position[indice[i]]
             sub_score = tf.slice(inst_score, [0, pos[0], pos[1], 0], [1, sz, sz, inst_shape[3]])
             instance = assemble(sz, sz, sub_score, k=3)
 
             # Upsample instance proposal to original size *8
-            if i > 0: 
-                reuse_scope = True
             instance = nn.upscore_layer(instance, {}, "upinst_inf", 
                                         tf.shape([1, w*8, h*8, 1]), num_class=1,
-                                        ksize=16, stride=8, reuse_scope=reuse_scope, var_dict=None)
+                                        ksize=16, stride=8, var_dict=None)
 
             proposal_map.append(instance)
 
@@ -224,7 +221,6 @@ class InstanceSensitiveFCN8s:
         inst_score = model['inst_score']
         obj_score = model['obj_score']
         loss = 0
-        reuse_scope = False
 
         for k in range(num_box):
             # box location and size
@@ -249,16 +245,13 @@ class InstanceSensitiveFCN8s:
             obj_loss = tf.abs(obj_score_gt - obj_score_pred)
             #obj_loss = tf.cast(obj_loss, tf.float32)
 
-            # if it is a positive sample, calculate instance loss else ignore
-            if k > 0:
-                reuse_scope = True
-            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id, reuse_scope), lambda: tf.constant(0, tf.float32))
+            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id), lambda: tf.constant(0, tf.float32))
             loss += obj_loss + inst_loss
 
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
 
-    def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id, reuse_scope=True):
+    def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id):
 
         # generate instance proposal
         inst_shape = tf.shape(inst_score)
@@ -270,10 +263,9 @@ class InstanceSensitiveFCN8s:
         instance = self.assemble(w_s, h_s, sub_score)
 
         # Upsample instance proposal to original size *8
+        instance = tf.image.resize_bilinear(instance, [w, h])
+        #instance = tf.reshape(instance, [1, w, h, 1])
 
-        instance = nn.upscore_layer(instance, {},
-                                    "upinst_train", [1, w, h, 1], num_class=1,
-                                    ksize=16, stride=8, reuse_scope=reuse_scope, var_dict=None)
 
         # generate gt instance
         instance_gt_ = tf.slice(gt_mask, [0, x, y, 0], [1, w, h,1])
