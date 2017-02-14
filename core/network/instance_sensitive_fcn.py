@@ -145,7 +145,7 @@ class InstanceSensitiveFCN8s:
         print('Model: %s' % str(model.keys()))
         return model
     
-    def inference(self, params, image, sz=21, stride=8, threshold=0.8):
+    def inference(self, image, top_k=5, sz=21, stride=8, w=128, h=256):
         """
         Input: image
         Return: a stack of masks, shape = [h, w, num_classes],
@@ -155,51 +155,60 @@ class InstanceSensitiveFCN8s:
         # Build model
         model = self._build_model(image, is_train=False)
 
-         """Assemble instance proposals during inference by densely sliding to generate proposals """
-        inst_score = model['inst_score']
+        """Assemble instance proposals during inference by densely sliding to generate proposals """
         obj_score = model['obj_score']
-        inst_shape = tf.shape(inst_score)
-
-       
+        inst_score = model['inst_score'] 
+        inst_shape = tf.shape(inst_score)        
+               
         ix = int((w - sz) / stride)
         iy = int((h - sz) / stride)
         proposal_map = []
+        object_pos = []
+        object_scores = []
     
         # Sliding over score map
         pos_x = 0
         for i in range(ix):
             pos_y = 0
             for j in range(iy):
-                print([pos_x, pos_y])
-                # slice out 
-                sub_score = tf.slice(inst_score, [0, pos_x, pos_y, 0], [1, sz, sz, inst_shape[3]])
-                # generate instance proposal
-                instance = assemble(sz, sz, sub_score, k=3)
-                objectness = tf.slice(obj_score, [0, pos_x, pos_y, 0], [1, sz, sz, 1])
-
+                # record position
+                object_pos.append((pos_x, pos_y))
 
                 # calculate objectness score
-                obj_score = tf.reduce_mean(obj)
-                if tf.greater_equal(obj_score, threshold):
-                    proposal_map.append(instance) 
-    
-
-                # BUG
-                pos_y += stride + d
-                if ((pos_y + d) > h):
-                    print(pos_y)
+                objectness = tf.slice(obj_score, [0, pos_x, pos_y, 0], [1, sz, sz, 1])   
+                score = tf.reshape(tf.reduce_mean(objectness), [1]) # reshape is necessary to perform for tf.concat
+                object_scores.append(score)
+                
+                pos_y += stride + sz
+                if ((pos_y + sz) >= h):
                     break
-
-            pos_x += stride + d 
-            if ((pos_x + d) > w):
-                print(pos_x)
+                
+            pos_x += stride + sz 
+            if ((pos_x + sz) >= w):
                 break
+            
+        # get top_k result, returns: [vals, indices]
+        indice = tf.nn.top_k(tf.concat(0,object_scores), top_k)[1] 
+        position = tf.constant(object_pos, tf.int32) # for indexing within tf
+
+        # generate top_k instance proposals
+        for i in range(top_k):
+            pos = position[indice[i]]
+            sub_score = tf.slice(inst_score, [0, pos[0], pos[1], 0], [1, sz, sz, inst_shape[3]])
+            instance = assemble(sz, sz, sub_score, k=3)
+            
+            # Upsample instance proposal to original size *8 
+            instance = nn.upscore_layer(instance, feed_dict={},
+                                    "upinst", tf.shape([1, w*8, h*8, 1]), num_class=1,
+                                    ksize=16, stride=8, var_dict=None)
+
+            proposal_map.append(instance)        
 
         print('Total proposals %d'%len(proposal_list))
-        return instance_masks
+        return proposal_map
 
     
-    def train(self, params, image, gt_masks, save_var=True):
+    def train(self, params, image, gt_mask, gt_box, num_box = 256, save_var=True):
         '''
         Input
         image: reshaped image value, shape=[1, Height, Width, 3], tf.float32
@@ -216,17 +225,16 @@ class InstanceSensitiveFCN8s:
         inst_score = model['inst_score']
         obj_score = model['obj_score']
         loss = 0
-        num_box = 256
         
         for k in range(num_box):
             # box location and size
-            x = data[k][0][0]
-            y = data[k][0][1]
-            w = data[k][1][0]
-            h = data[k][1][1]
+            x = gt_box[k][0][0]
+            y = gt_box[k][0][1]
+            w = gt_box[k][1][0]
+            h = gt_box[k][1][1]
             
-            obj_score_gt = data[k][2][0]
-            obj_id = data[k][2][1]               
+            obj_score_gt = gt_box[k][2][0]
+            obj_id = gt_box[k][2][1]               
             cond = tf.equal(1, obj_score_gt)
             
             # if it is a positive sample, score_gt is 1 else 0
@@ -264,10 +272,15 @@ class InstanceSensitiveFCN8s:
         val = tf.ones((tf.shape(tf.shape(indices)[0], tf.float32))
         instance_gt = tf.sparse_to_dense(indices, [1, w, h, 1], val)   
         
+        # !! The shape of proposal might be different from gt, to be settled!!
         return tf.nn.sigmoid_cross_entropy_with_logits(labels=instance_gt, logits=instance)
 
 
     def assemble(self, w, h, score, k=3):
+        """
+        Assemble  k*k parts across last dimension to make one instance proposal
+        Return a tensor with the same shape as ????? to be settle
+        """
         dx = tf.floor(w / k)
         dy = tf.floor(h / k)
         dx = tf.cast(dx, tf.int32)
