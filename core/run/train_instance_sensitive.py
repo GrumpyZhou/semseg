@@ -21,20 +21,22 @@ import scipy.misc
 import numpy as np
 import tensorflow as tf
 
-# TODO: import the instance-sensitive network
-from network.fcn_vgg16 import FCN16VGG
+from network.instance_sensitive_fcn import InstanceSensitiveFCN8s
 
 import data_utils as dt
 
 # Specify which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 # Change to Cityscape database
 train_data_config = {'city_dir':"../data/CityDatabase",
+                     #'city_dir':"/Users/WY/Downloads/CityDatabase",
                      'randomize': False,
                      'seed': None,
                      'dataset': 'train',
                      'use_box': True,
+                     'use_car': True,
+                     'use_person': False,
                      'pred_save_path': None,
                      'colored_save_path': None,
                      'labelIDs_save_path': None}
@@ -46,6 +48,7 @@ fcn_scale = 'fcn8s'
 params = {'num_classes': 20, 'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/%s'%fcn_scale,
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
+          #'trained_weight_path':'../data/val_weights/city_fcn8s_skip_100000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
@@ -56,58 +59,82 @@ train_iter = 1
 val_step = 1
 
 # Logging config
-print('Training config: fcn_scale %s, iters %d'%(fcn_scale, train_iter))
+#print('Training config: fcn_scale %s, iters %d'%(fcn_scale, train_iter))
 with tf.Session() as sess:
     # Init CNN -> load pre-trained weights from VGG16.
-    fcn = FCN16VGG(params['trained_weight_path'])
+    fcn = InstanceSensitiveFCN8s(params['trained_weight_path'])
     npy_path = params['save_trained_weight_path']
 
     # Be aware of loaded data type....
     train_img = tf.placeholder(tf.float32, shape=[1, None, None, 3])
-    # TODO: dimension of placeholder of gt box.
-    train_box = tf.placeholder(tf.int32, shape=[2,3,2])
+    train_box = tf.placeholder(tf.int32, shape=[256,3,2])
+    train_mask = tf.placeholder(tf.int32, shape=[1, None, None, 1])
 
     # create model and train op
-    [train_op, loss] = fcn.train(params=params, image=train_img, truth=train_box, scale_min=fcn_scale, save_var=True)
+    [train_op, loss] = fcn.train(params=params, image=train_img, gt_mask=train_mask, gt_box=train_box, save_var=True)
     var_dict_to_train = fcn.var_dict
-    tf.scalar_summary('train_loss', loss)
+    #tf.scalar_summary('train_loss', loss)
 
-    merged_summary = tf.merge_all_summaries()
-    writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
+    #merged_summary = tf.merge_all_summaries()
+    #writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
 
     init = tf.initialize_all_variables()
     sess.run(init)
 
     print('Start training...')
     for i in range(train_iter+1):
-        #print("train iter: ", i)
         # Load data, Already converted to BGR
         next_pair = train_dataset.next_batch()
         next_pair_image = next_pair[0]
         next_pair_label = next_pair[1]
+        next_pair_box = next_pair[2]
 
         image_shape = next_pair_image.shape
 
         train_feed_dict = {train_img: next_pair_image,
-                           train_box: next_pair_label,}
+                           train_box: next_pair_box,
+                           train_mask: next_pair_label}
         sess.run(train_op, train_feed_dict)
         # Save loss value
-        if i % 100 == 0:
-            summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
-            writer.add_summary(summary, i)
-            print('Iter %d Training Loss: %f' % (i,loss_value))
+        # if i % 100 == 0:
+        #     summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
+        #     writer.add_summary(summary, i)
+        #     print('Iter %d Training Loss: %f' % (i,loss_value))
 
         # Save weight for validation
-        if i >= val_step and i % val_step == 0:
-            train_weight_dict = sess.run(var_dict_to_train)
-            print('Saving trained weight after %d iterations... '%i)
-            if len(train_weight_dict.keys()) != 0:
-                #for key in train_weight_dict.keys():
-                #    print('Layer: %s  Weight shape: %s   Bias shape: %s'%(key, train_weight_dict[key][0].shape, train_weight_dict[key][1].shape))
-                fname = 'city_%s_instance_sensitive_%d.npy'%(fcn_scale,i)
-		fpath = npy_path+fname
-                np.save(fpath, train_weight_dict)
-                print("trained weights saved: ", fpath)
+  #       if i >= val_step and i % val_step == 0:
+  #           train_weight_dict = sess.run(var_dict_to_train)
+  #           print('Saving trained weight after %d iterations... '%i)
+  #           if len(train_weight_dict.keys()) != 0:
+  #               fname = 'city_%s_instance_sensitive_%d.npy'%(fcn_scale,i)
+		# fpath = npy_path+fname
+  #               np.save(fpath, train_weight_dict)
+  #               print("trained weights saved: ", fpath)
     print('Finished training')
+
+    # Test
+    # print('Start training...')
+    # for i in range(train_iter+1):
+    #     next_pair = train_dataset.next_batch()
+    #     next_pair_image = next_pair[0]
+    #     next_pair_label = next_pair[1]
+    #     next_pair_box = next_pair[2]
+    #     print('Shape of next_pair_image: ', next_pair_image.shape)
+    #     print('Shape of next_pair_label: ', next_pair_label.shape)
+    #     print('Shape of next_pair_box: ', next_pair_box.shape)
+
+    #     output_img = train_img
+    #     output_box = train_box
+    #     output_mask = train_mask
+
+    #     output = (output_img,output_box,output_mask)
+
+    #     my_out = sess.run(output, feed_dict={train_img: next_pair_image, train_box: next_pair_box, train_mask: next_pair_label})
+    #     print('Shape of feed image: ', my_out[0].shape)
+    #     print('Shape of feed box: ', my_out[1].shape)
+    #     print('Shape of feed mask: ', my_out[2].shape)
+
+    #     print('The first box: ', my_out[1][0])
+    #     print('The second box: ', my_out[1][1])
 
 
