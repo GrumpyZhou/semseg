@@ -221,9 +221,13 @@ def generate_positive_box(precise_posi_coord):
 
 	# reassure the box dimension
 	if posi_box[0][0] + posi_box[1][0] >= 1024 or posi_box[0][1] + posi_box[1][1] >= 2048:
-		sys.exit('The posi box dimension out of boundary.')
+		#sys.exit('The posi box dimension out of boundary.')
+		print('The posi box dimension out of boundary. Return None.')
+		return None
 	if posi_box[0][0] < 0 or posi_box[0][1] < 0:
-		sys.exit('The posi box location out of boundary, small than 0')
+		#sys.exit('The posi box location out of boundary, small than 0')
+		print('The posi box location out of boundary, small than 0. Return None.')
+		return None
 
 	return posi_box
 
@@ -344,13 +348,15 @@ def generate_negative_box(precise_posi_coord):
 	if nega_box[0][0] + nega_box[1][0] >= 1024 or nega_box[0][1] + nega_box[1][1] >= 2048:
 		print('x size: ', nega_box[0][0] + nega_box[1][0])
 		print('y size: ', nega_box[0][1] + nega_box[1][1])
-		sys.exit('The nega box dimension out of boundary.')
-		#print('The nega box dimension out of boundary.')
+		#sys.exit('The nega box dimension out of boundary.')
+		print('The nega box dimension out of boundary. Return None.')
+		return None
 	if nega_box[0][0] < 0 or nega_box[0][1] < 0:
 		print('x location: ', nega_box[0][0])
 		print('y location: ', nega_box[0][1])
-		sys.exit('The nega box location out of boundary, small than 0')
-		#print('The nega box location out of boundary, small than 0')
+		#sys.exit('The nega box location out of boundary, small than 0')
+		print('The nega box location out of boundary, small than 0. Return None')
+		return None
 
 	return nega_box
 
