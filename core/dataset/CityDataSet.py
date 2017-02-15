@@ -71,6 +71,7 @@ class CityDataSet():
         print('Load %s dataset'%self.dataset_type)
         files_img = []
         files_lbl = []
+        files_box = []
 
         # Load training images
         search_img = os.path.join(self.city_dir,
