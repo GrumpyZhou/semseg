@@ -307,7 +307,6 @@ class InstanceSensitiveFCN8s:
             instance = misc.imresize(proposal, (sz * 8, sz * 8), interp='bilinear')
             prediction[pos[0] * 8 : pos[2] * 8, pos[1] * 8 : pos[3] * 8] += instance 
             #instances.append(instance)
-        print('instances %d'%len(instances))
         return prediction #instances, 8 * picked_pos
 
 
