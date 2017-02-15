@@ -15,6 +15,7 @@ import numpy as np
 import nn
 import math
 import data_utils as dt
+from scipy import misc
 
 DATA_DIR = 'data'
 
@@ -145,68 +146,6 @@ class InstanceSensitiveFCN8s:
         print('Model: %s' % str(model.keys()))
         return model
 
-    def inference(self, image, top_k=5, sz=21, stride=8, w=128, h=256):
-        """
-        Input: image
-        Return: a stack of masks, shape = [h, w, num_classes],
-                each slice represent instance masks belonging to a class
-                value of each pixel is between [0,max_instance)
-        """
-        # Build model
-        model = self._build_model(image, is_train=False)
-
-        """Assemble instance proposals during inference by densely sliding to generate proposals """
-        obj_score = model['obj_score']
-        inst_score = model['inst_score']
-        inst_shape = tf.shape(inst_score)
-
-        ix = int((w - sz) / stride)
-        iy = int((h - sz) / stride)
-        proposal_map = []
-        object_pos = []
-        object_scores = []
-
-        # Sliding over score map
-        pos_x = 0
-        for i in range(ix):
-            pos_y = 0
-            for j in range(iy):
-                # record position
-                object_pos.append((pos_x, pos_y))
-
-                # calculate objectness score
-                objectness = tf.slice(obj_score, [0, pos_x, pos_y, 0], [1, sz, sz, 1])
-                score = tf.reshape(tf.reduce_mean(objectness), [1]) # reshape is necessary to perform for tf.concat
-                object_scores.append(score)
-
-                pos_y += stride + sz
-                if ((pos_y + sz) >= h):
-                    break
-
-            pos_x += stride + sz
-            if ((pos_x + sz) >= w):
-                break
-
-        # get top_k result, returns: [vals, indices]
-        indice = tf.nn.top_k(tf.concat(0,object_scores), top_k)[1]
-        position = tf.constant(object_pos, tf.int32) # for indexing within tf
-
-        # generate top_k instance proposals
-        for i in range(top_k):
-            pos = position[indice[i]]
-            sub_score = tf.slice(inst_score, [0, pos[0], pos[1], 0], [1, sz, sz, inst_shape[3]])
-            instance = assemble(sz, sz, sub_score, k=3)
-
-            # Upsample instance proposal to original size *8
-            instance = nn.upscore_layer(instance, {}, "upinst_inf", 
-                                        tf.shape([1, w*8, h*8, 1]), num_class=1,
-                                        ksize=16, stride=8, var_dict=None)
-
-            proposal_map.append(instance)
-
-        print('Total proposals %d'%len(proposal_list))
-        return proposal_map
-
 
     def train(self, image, gt_mask, gt_box, learning_rate=1e-6, num_box = 256, save_var=True):
         '''
@@ -304,4 +243,130 @@ class InstanceSensitiveFCN8s:
 
         instance = tf.reshape(instance, [1, dx*k, dy*k, 1])
         return instance
+    
 
+    def inference(self, image):
+        # Build model
+        model = self._build_model(image, is_train=False)
+        obj_score = model['obj_score']
+        inst_score = model['inst_score']
+        return tf.squeeze(obj_score),  tf.squeeze(inst_score)
+
+    def dense_assemble(self, score_map, feature_map, sz=21, stride=8, w=128, h=256, threshold=0.8):
+        """
+        Assemble instance proposal for inference, implemented with numpy.
+        """
+        # Sliding over score map
+        object_pos = []
+        ix = int((w - sz) / stride)
+        iy = int((h - sz) / stride)
+        pos_x = 0
+        for i in range(ix):
+            pos_y = 0
+            for j in range(iy):
+                # calculate objectness score
+                objectness = score_map[pos_x : (pos_x + sz), pos_y : (pos_y + sz)]
+                score = np.mean(objectness)
+                object_pos.append([pos_x, pos_y, pos_x + sz, pos_y + sz, score])
+
+                pos_y += stride + sz
+                if ((pos_y + sz) >= h):
+                    break
+
+            pos_x += stride + sz
+            if ((pos_x + sz) >= w):
+                break
+
+        # Convert list to np array
+        object_pos = np.array(object_pos)
+        # Get bounding boxes of instances with nonmaximum suppression
+        picked_pos = self.non_max_suppression_fast(object_pos, area=w*h, threshold=threshold)
+        print('object_pos %s picked_pos %s' % (object_pos.shape,picked_pos.shape))
+
+        # Make instance proposals and fuse all instances into one image
+        instances = []
+        prediction = np.zeros((w * 8, h * 8))
+        part_num = 3
+        dx = int(sz / part_num)
+        dy = int(sz / part_num)
+        instances = []
+        for k in range(picked_pos.shape[0]):
+            pos = picked_pos[k]
+            sub_feature = feature_map[pos[0] : pos[2], pos[1] : pos[3], :]     
+            proposal = []
+            for i in range(part_num):
+                row = []
+                for j in range(part_num):
+                    c = i * part_num + j
+                    row.append(sub_feature[i * dx : (i + 1) * dx, j * dy : (j + 1) * dy, c])
+                row = np.hstack(row)
+                proposal.append(row)        
+            proposal = np.vstack(proposal)
+
+            # upsample instance to 8*wind_sz
+            instance = misc.imresize(proposal, (sz * 8, sz * 8), interp='bilinear')
+            prediction[pos[0] * 8 : pos[2] * 8, pos[1] * 8 : pos[3] * 8] += instance 
+            #instances.append(instance)
+        print('instances %d'%len(instances))
+        return prediction #instances, 8 * picked_pos
+
+
+    def non_max_suppression_fast(self, boxes, area=128*256, threshold=0.8):
+    
+        """
+        Modified non-maximum suppresion based on the implementation by Adrian Rosebrock
+        Source: http://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/ 
+        """
+
+	# if there are no boxes, return an empty list
+	if len(boxes) == 0:
+		return []
+
+	# if the bounding boxes integers, convert them to floats --
+	# this is important since we'll be doing a bunch of divisions
+	if boxes.dtype.kind == "i":
+		boxes = boxes.astype("float")
+
+	# initialize the list of picked indexes	
+	pick = []
+
+	# grab the coordinates of the bounding boxes and corresponding score
+	x1 = boxes[:,0]
+	y1 = boxes[:,1]
+	x2 = boxes[:,2]
+	y2 = boxes[:,3]
+        score = boxes[:,4]
+        
+        # Sort with score, the higher the score, the more confident it is an instance bounding box
+	idxs = np.argsort(score)
+
+	# keep looping while some indexes still remain in the indexes list
+	while len(idxs) > 0:
+		# grab the last index in the indexes list and add the
+		# index value to the list of picked indexes
+		last = len(idxs) - 1
+		i = idxs[last]
+		pick.append(i)
+
+		# find the largest (x, y) coordinates for the start of
+		# the bounding box and the smallest (x, y) coordinates
+		# for the end of the bounding box
+		xx1 = np.maximum(x1[i], x1[idxs[:last]])
+		yy1 = np.maximum(y1[i], y1[idxs[:last]])
+		xx2 = np.minimum(x2[i], x2[idxs[:last]])
+		yy2 = np.minimum(y2[i], y2[idxs[:last]])
+
+		# compute the width and height of the bounding box
+		w = np.maximum(0, xx2 - xx1 + 1)
+		h = np.maximum(0, yy2 - yy1 + 1)
+
+		# compute the ratio of overlap
+		overlap = (w * h) / area
+
+		# delete all indexes from the index list that have
+		idxs = np.delete(idxs, np.concatenate(([last],
+			np.where(overlap > threshold)[0])))
+
+	# return only the bounding boxes that were picked using the
+	# integer data type
+	return boxes[pick].astype("int") 
