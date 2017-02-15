@@ -164,9 +164,10 @@ def generate_box(fname):
 	#print('Number of positives: ', len(box_data['positive']))
 	#print('Number of negatives: ', len(box_data['negative']))
 	#print('Number of remainder: ', loop_remainder)
-	count = 0
+	#count = 0
 	while loop_remainder != 0:
 		for pre_coord in list_of_preposiboxes:
+			nega_box_none = False
 			if loop_remainder == 0:
 				break
 			# Generate positive box
@@ -176,15 +177,27 @@ def generate_box(fname):
 				continue
 			else:
 				box_data.append(posi_box)
-				count += 1
 
 			# Generate negative box
 			nega_box = generate_negative_box(pre_coord)
+			if nega_box is None:
+				box_data.pop()
+				continue
+			else:
 			# If the negative box is not overlap with another positive box
-			while is_positive(list_of_preposiboxes, nega_box):
-				nega_box = generate_negative_box(pre_coord)
-			box_data.append(nega_box)
-			loop_remainder -= 1
+				while is_positive(list_of_preposiboxes, nega_box):
+					nega_box = generate_negative_box(pre_coord)
+					if nega_box is None:
+						nega_box_none = True
+						box_data.pop()
+						break
+				if nega_box_none:
+					continue
+				else:
+					box_data.append(nega_box)
+					loop_remainder -= 1
+			#box_data.append(nega_box)
+			#loop_remainder -= 1
 
 	#print('Count is: ', count)
 	#print('Number of boxes in total: ', len(box_data))
