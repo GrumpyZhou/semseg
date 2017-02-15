@@ -101,6 +101,7 @@ def random_pair(rand_type):
 def generate_box(fname):
 	#box_data = {}
 	box_data = []
+	nega_box_none = False
 	#box_data['positive'] = []
 	#box_data['negative'] = []
 
@@ -121,6 +122,7 @@ def generate_box(fname):
 	#print('Number of loop_remainder: ', loop_remainder)
 	for index in range(loop_num):
 		for pre_coord in list_of_preposiboxes:
+			nega_box_none = False
 			# Generate positive box
 			posi_box = generate_positive_box(pre_coord)
 
@@ -134,10 +136,25 @@ def generate_box(fname):
 
 			# Generate negative box
 			nega_box = generate_negative_box(pre_coord)
-			# If the negative box is not overlap with another positive box
-			while is_positive(list_of_preposiboxes, nega_box):
-				nega_box = generate_negative_box(pre_coord)
-			box_data.append(nega_box)
+			if nega_box is None:
+				invalid_remainder += 1
+				# remove the corresponding positive box
+				box_data.pop()
+				continue
+			else:
+				# If the negative box is not overlap with another positive box
+				while is_positive(list_of_preposiboxes, nega_box):
+					nega_box = generate_negative_box(pre_coord)
+					if nega_box is None:
+						nega_box_none = True
+						invalid_remainder += 1
+						# remove the corresponding positive box
+						box_data.pop()
+						break
+				if nega_box_none:
+					continue
+				else:
+					box_data.append(nega_box)
 
 	# Generate for the remainder boxes.
 	if invalid_remainder == loop_num * number_of_preposiboxes:
@@ -171,6 +188,8 @@ def generate_box(fname):
 
 	#print('Count is: ', count)
 	#print('Number of boxes in total: ', len(box_data))
+	if len(box_data) != 256:
+		sys.exit('Number of boxes is not 256, is: ', len(box_data))
 	return box_data
 
 def generate_positive_box(precise_posi_coord):
