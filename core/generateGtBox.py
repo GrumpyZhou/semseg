@@ -219,6 +219,12 @@ def generate_positive_box(precise_posi_coord):
 	if posi_box[0][0] % 8 !=0 or posi_box[0][1] % 8 !=0:
 		sys.exit('The posi box location is not a multiple of 8')
 
+	# reassure the box dimension
+	if posi_box[0][0] + posi_box[1][0] >= 1024 or posi_box[0][1] + posi_box[1][1] >= 2048:
+		sys.exit('The posi box dimension out of boundary.')
+	if posi_box[0][0] < 0 or posi_box[0][1] < 0:
+		sys.exit('The posi box location out of boundary, small than 0')
+
 	return posi_box
 
 def generate_precise_posiBox(precise_posi_coord):
@@ -294,19 +300,39 @@ def generate_negative_box(precise_posi_coord):
 
 	if temp_y + pre_box_dim[1] >= 2048 or temp_y < 0:
 		# shift to the other direction
-		temp_y = pre_box_coord[1] - rand_shift
+		if abs(rand_shift) <= 40:
+			rand_shift = -rand_shift
+		else:
+			rand_shift = - (rand_shift / 2)
+		temp_y = pre_box_coord[1] + rand_shift
+		#temp_y = pre_box_coord[1] - rand_shift
 		y_remainder = temp_y % 8
 		if np.sign(-rand_shift) >= 0:
 			temp_y = temp_y + 8 - y_remainder
 		else:
 			temp_y = temp_y - y_remainder
 	if temp_x + pre_box_dim[0] >= 1024 or temp_x < 0:
-		temp_x = pre_box_coord[0] - rand_shift
+		# if the rand_shift is within 40, then shifting to the other direction
+		if abs(rand_shift) <= 40:
+			rand_shift = -rand_shift
+		# if the rand_shift is larger than 40, divide by 2 and then shifting to the other direction
+		else:
+			rand_shift = - (rand_shift / 2)
+		temp_x = pre_box_coord[0] + rand_shift
+
+		# print('before box origin, ', pre_box_coord[0])
+		# print('before location temp_x, ', temp_x)
+		# print('before boundary, ', temp_x + pre_box_dim[0])
+		# temp_x = pre_box_coord[0] - rand_shift
+		# print('middle location, ', temp_x)
+		# print('middle boundary, ', temp_x + pre_box_dim[0])
 		x_remainder = temp_x % 8
 		if np.sign(-rand_shift) >= 0:
 			temp_x = temp_x + 8 - x_remainder
 		else:
 			temp_x = temp_x - x_remainder
+		# print('after location, ', temp_x)
+		# print('after boundary, ', temp_x + pre_box_dim[0])
 
 	nega_box = ((temp_x, temp_y), (pre_box_dim[0], pre_box_dim[1]), (0,-1))
 
@@ -314,6 +340,17 @@ def generate_negative_box(precise_posi_coord):
 		sys.exit('The nega box size is not a multiple of 24')
 	if nega_box[0][0] % 8 !=0 or nega_box[0][1] % 8 !=0:
 		sys.exit('The nega box location is not a multiple of 8')
+
+	if nega_box[0][0] + nega_box[1][0] >= 1024 or nega_box[0][1] + nega_box[1][1] >= 2048:
+		print('x size: ', nega_box[0][0] + nega_box[1][0])
+		print('y size: ', nega_box[0][1] + nega_box[1][1])
+		sys.exit('The nega box dimension out of boundary.')
+		#print('The nega box dimension out of boundary.')
+	if nega_box[0][0] < 0 or nega_box[0][1] < 0:
+		print('x location: ', nega_box[0][0])
+		print('y location: ', nega_box[0][1])
+		sys.exit('The nega box location out of boundary, small than 0')
+		#print('The nega box location out of boundary, small than 0')
 
 	return nega_box
 
