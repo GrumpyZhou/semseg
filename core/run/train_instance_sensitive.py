@@ -77,6 +77,9 @@ with tf.Session() as sess:
         next_pair_label = next_pair[1]
         next_pair_box = next_pair[2]
 
+        if next_pair_box is None:
+            continue
+
         image_shape = next_pair_image.shape
 
         train_feed_dict = {train_img: next_pair_image,
