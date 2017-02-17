@@ -73,7 +73,7 @@ class CityDataSet():
         files_lbl = []
         files_box = []
 
-        # Load training images
+        # Load train/test/val images
         search_img = os.path.join(self.city_dir,
                                   #'leftImg8bit_trainvaltest/leftImg8bit',
                                   'leftImg8bit',
@@ -81,8 +81,8 @@ class CityDataSet():
         files_img = glob.glob(search_img)
         files_img.sort()
 
+        # Load train/val ground truth
         if self.dataset_type != 'test':
-            # Load groudtruth images
             if self.use_box:
                 # load gt mask for each image
                 search_lbl = os.path.join(self.city_dir,
@@ -134,16 +134,13 @@ class CityDataSet():
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
-            box_fname = self.box_indices[self.idx]
-            box = self.load_box(box_fname)
             if self.use_box:
+                box_fname = self.box_indices[self.idx]
+                box = self.load_box(box_fname)
                 # if use gt box, do not reshape
                 #label = label.reshape(1, *label.shape)
-                label = label
-                box = box
             else:
-                #label = label.reshape(1, *label.shape)
-                label = label
+                label = label.reshape(1, *label.shape)
                 box = None
             self.idx += 1
 
@@ -187,7 +184,7 @@ class CityDataSet():
         label = np.array(img, dtype=np.uint8)
         label = label[np.newaxis, ...]
 
-        if self.use_car:
+        if self.use_box and self.use_car:
             label = label[:,:,:,1]
             label = label[..., np.newaxis]
 
