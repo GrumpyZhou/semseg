@@ -180,6 +180,11 @@ class InstanceSensitiveFCN8s:
             instance_gt_shape = tf.pack(instance_gt_shape)
             instance_gt_score = tf.sparse_to_dense(indices, instance_gt_shape, sparse_val)
 
+            # Calculate weight
+            inst_pixel = tf.cast(tf.shape(indices)[0], tf.float32)
+            total_pixel = tf.cast(w * h, tf.float32)
+            weight = (total_pixel - inst_pixel) / inst_pixel
+
             # Downscale the bounding box
             w_s =  tf.cast(tf.floor(w / 8), tf.int32)
             h_s =  tf.cast(tf.floor(h / 8), tf.int32)
@@ -187,25 +192,25 @@ class InstanceSensitiveFCN8s:
             y_s = tf.cast(tf.floor(y / 8), tf.int32)
             
             # Calculate instance loss (only for positive samples) and objectness loss
-            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, instance_gt_score, x_s, y_s, w_s, h_s), lambda: tf.constant(0, tf.float32))
-            obj_loss = self.get_obj_loss(obj_score, instance_gt_score, x_s, y_s, w_s, h_s)
+            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, instance_gt_score, weight, x_s, y_s, w_s, h_s), lambda: tf.constant(0, tf.float32))
+            obj_loss = self.get_obj_loss(obj_score, instance_gt_score, weight, x_s, y_s, w_s, h_s)
             loss += obj_loss + inst_loss
             
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
 
-    def get_obj_loss(self, obj_score, obj_gt, x, y, w, h):
+    def get_obj_loss(self, obj_score, obj_gt, weight, x, y, w, h):
         # Generate corresponding objectness score
         objectness = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
 
         # Upsample instance proposal to original size *8
         objectness = tf.image.resize_bilinear(objectness, [w*8, h*8])
         
-        # Logistic regression to calculate loss
-        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=obj_gt, logits=objectness))
+        # Logistic regression to calculate loss weighted cross-entropy)
+        loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=objectness, targets=obj_gt, pos_weight=weight))
         return loss
 
-    def get_inst_loss(self, inst_score, inst_gt, x, y, w, h):
+    def get_inst_loss(self, inst_score, inst_gt, weight, x, y, w, h):
         # Generate instance proposal
         inst_shape = tf.shape(inst_score)
         sub_score = tf.slice(inst_score, [0, x, y, 0], [1, w, h, inst_shape[3]])
@@ -214,8 +219,8 @@ class InstanceSensitiveFCN8s:
         # Upsample instance proposal to original size *8
         instance = tf.image.resize_bilinear(instance, [w*8, h*8])
         
-        # Logistic regression to calculate loss
-        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=inst_gt, logits=instance))
+        # Logistic regression to calculate loss (weighted cross-entropy)
+        loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=instance, targets=inst_gt,  pos_weight=weight))
         return loss
 
     def assemble(self, w, h, score, k=3):
