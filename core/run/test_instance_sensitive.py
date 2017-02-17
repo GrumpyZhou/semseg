@@ -24,16 +24,17 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
-                     'dataset': 'test',
-                     'use_box': False,
+                     'dataset': 'train',
+                     'use_box': True,
                      'use_car': True,
                      'use_person': False,
                      'pred_save_path': None,
                      'colored_save_path': None,
                      'labelIDs_save_path': None}
 
+weight_iter = 30000
 params = {'rate': 1e-5,
-          'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy'}
+          'trained_weight_path':'../data/val_weights/city_fcn8s_instance_sensitive_%d.npy'%weight_iter}
 
 test_dataset = dt.CityDataSet(test_data_config)
 iterations = 1
@@ -57,9 +58,10 @@ with tf.Session() as sess:
         inf_feed_dict = {image: next_pair_image}
 
         score_map, feature_map = sess.run([obj_score, inst_score], feed_dict=inf_feed_dict)
+        np.save('./sens/feature_im%d_%d.npy'%(i, weight_iter), feature_map)
         
         # Get instances from densely assembling
         prediction = inst_fcn.dense_assemble(score_map, feature_map)
-        scp.misc.imsave('./pred_%d.png'%i, prediction)
+        scp.misc.imsave('./sens/pred_im%d_%d.png'%(i, weight_iter), prediction)
         
         
