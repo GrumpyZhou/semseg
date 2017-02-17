@@ -168,54 +168,55 @@ class InstanceSensitiveFCN8s:
             w = gt_box[k][1][0]
             h = gt_box[k][1][1]
 
-            obj_score_gt = gt_box[k][2][0]
+            gt_flag = gt_box[k][2][0]
             obj_id = gt_box[k][2][1]
-            cond = tf.equal(1, obj_score_gt)
+            cond = tf.equal(1, gt_flag)
 
-            # if it is a positive sample, score_gt is 1 else 0
+            # Slice out instance_gt_score, ignore irrelevant instances
+            instance_gt_ = tf.slice(gt_mask, [0, x, y, 0], [1, w, h,1])
+            indices = tf.where(tf.equal(instance_gt_, obj_id))
+            sparse_val = tf.constant(1, dtype=tf.float32)
+            instance_gt_shape = tf.to_int64([1, w, h, 1])
+            instance_gt_shape = tf.pack(instance_gt_shape)
+            instance_gt_score = tf.sparse_to_dense(indices, instance_gt_shape, sparse_val)
+
+            # Downscale the bounding box
             w_s =  tf.cast(tf.floor(w / 8), tf.int32)
             h_s =  tf.cast(tf.floor(h / 8), tf.int32)
-
-            obj_score_gt = tf.cond(cond, lambda: tf.constant(1, tf.float32), lambda: tf.constant(0, tf.float32))
             x_s = tf.cast(tf.floor(x / 8), tf.int32)
             y_s = tf.cast(tf.floor(y / 8), tf.int32)
-            obj_score_pred = tf.reduce_mean(tf.slice(obj_score, [0, x_s, y_s, 0], [1, w_s, h_s, 1]))
-            #obj_score_pred = tf.to_int32(obj_score_pred)
-            obj_loss = tf.abs(obj_score_gt - obj_score_pred)
-            #obj_loss = tf.cast(obj_loss, tf.float32)
-
-            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, gt_mask, x, y, w, h, obj_id), lambda: tf.constant(0, tf.float32))
+            
+            # Calculate instance loss (only for positive samples) and objectness loss
+            inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, instance_gt_score, x_s, y_s, w_s, h_s), lambda: tf.constant(0, tf.float32))
+            obj_loss = self.get_obj_loss(obj_score, instance_gt_score, x_s, y_s, w_s, h_s)
             loss += obj_loss + inst_loss
-
+            
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
 
-    def get_inst_loss(self, inst_score, gt_mask, x, y, w, h, obj_id):
-
-        # generate instance proposal
-        inst_shape = tf.shape(inst_score)
-        w_s =  tf.cast(tf.floor(w / 8), tf.int32)
-        h_s =  tf.cast(tf.floor(h / 8), tf.int32)
-        x_s = tf.cast(tf.floor(x / 8), tf.int32)
-        y_s = tf.cast(tf.floor(y / 8), tf.int32)
-        sub_score = tf.slice(inst_score, [0, x_s, y_s, 0], [1, w_s, h_s, inst_shape[3]])
-        instance = self.assemble(w_s, h_s, sub_score)
+    def get_obj_loss(self, obj_score, obj_gt, x, y, w, h):
+        # Generate corresponding objectness score
+        objectness = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
 
         # Upsample instance proposal to original size *8
-        instance = tf.image.resize_bilinear(instance, [w, h])
-        #instance = tf.reshape(instance, [1, w, h, 1])
+        objectness = tf.image.resize_bilinear(objectness, [w*8, h*8])
+        
+        # Logistic regression to calculate loss
+        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=obj_gt, logits=objectness))
+        return loss
 
+    def get_inst_loss(self, inst_score, inst_gt, x, y, w, h):
+        # Generate instance proposal
+        inst_shape = tf.shape(inst_score)
+        sub_score = tf.slice(inst_score, [0, x, y, 0], [1, w, h, inst_shape[3]])
+        instance = self.assemble(w, h, sub_score)
 
-        # generate gt instance
-        instance_gt_ = tf.slice(gt_mask, [0, x, y, 0], [1, w, h,1])
-        indices = tf.where(tf.equal(instance_gt_, obj_id))
-        sparse_val = tf.constant(1, dtype=tf.float32)
-        instance_gt_shape = tf.to_int64([1, w, h, 1])
-        instance_gt_shape = tf.pack(instance_gt_shape)
-        instance_gt = tf.sparse_to_dense(indices, instance_gt_shape, sparse_val)
-
-        return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=instance_gt, logits=instance))
-
+        # Upsample instance proposal to original size *8
+        instance = tf.image.resize_bilinear(instance, [w*8, h*8])
+        
+        # Logistic regression to calculate loss
+        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(targets=inst_gt, logits=instance))
+        return loss
 
     def assemble(self, w, h, score, k=3):
         """
