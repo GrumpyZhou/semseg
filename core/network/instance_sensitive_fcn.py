@@ -183,19 +183,20 @@ class InstanceSensitiveFCN8s:
             # Calculate weight
             inst_pixel = tf.cast(tf.shape(indices)[0], tf.float32)
             total_pixel = tf.cast(w * h, tf.float32)
-            weight = (total_pixel - inst_pixel) / inst_pixel
+            #weight = (total_pixel - inst_pixel) / inst_pixel
+            weight = tf.cond(cond, lambda: (total_pixel - inst_pixel) / inst_pixel, lambda: tf.constant(1, tf.float32))
 
             # Downscale the bounding box
             w_s =  tf.cast(tf.floor(w / 8), tf.int32)
             h_s =  tf.cast(tf.floor(h / 8), tf.int32)
             x_s = tf.cast(tf.floor(x / 8), tf.int32)
             y_s = tf.cast(tf.floor(y / 8), tf.int32)
-            
+
             # Calculate instance loss (only for positive samples) and objectness loss
             inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, instance_gt_score, weight, x_s, y_s, w_s, h_s), lambda: tf.constant(0, tf.float32))
             obj_loss = self.get_obj_loss(obj_score, instance_gt_score, weight, x_s, y_s, w_s, h_s)
             loss += obj_loss + inst_loss
-            
+
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
 
@@ -205,7 +206,7 @@ class InstanceSensitiveFCN8s:
 
         # Upsample instance proposal to original size *8
         objectness = tf.image.resize_bilinear(objectness, [w*8, h*8])
-        
+
         # Logistic regression to calculate loss weighted cross-entropy)
         loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=objectness, targets=obj_gt, pos_weight=weight))
         return loss
@@ -218,7 +219,7 @@ class InstanceSensitiveFCN8s:
 
         # Upsample instance proposal to original size *8
         instance = tf.image.resize_bilinear(instance, [w*8, h*8])
-        
+
         # Logistic regression to calculate loss (weighted cross-entropy)
         loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=instance, targets=inst_gt,  pos_weight=weight))
         return loss
@@ -226,7 +227,7 @@ class InstanceSensitiveFCN8s:
     def assemble(self, w, h, score, k=3):
         """
         Assemble  k*k parts across last dimension to make one instance proposal
-        Return a tensor with the shape [1, w, h, 1] 
+        Return a tensor with the shape [1, w, h, 1]
         """
         dx = tf.floor(w / k)
         dy = tf.floor(h / k)
@@ -249,7 +250,7 @@ class InstanceSensitiveFCN8s:
 
         instance = tf.reshape(instance, [1, dx*k, dy*k, 1])
         return instance
-    
+
 
     def inference(self, image):
         # Build model
@@ -298,7 +299,7 @@ class InstanceSensitiveFCN8s:
         instances = []
         for k in range(picked_pos.shape[0]):
             pos = picked_pos[k]
-            sub_feature = feature_map[pos[0] : pos[2], pos[1] : pos[3], :]     
+            sub_feature = feature_map[pos[0] : pos[2], pos[1] : pos[3], :]
             proposal = []
             for i in range(part_num):
                 row = []
@@ -306,21 +307,21 @@ class InstanceSensitiveFCN8s:
                     c = i * part_num + j
                     row.append(sub_feature[i * dx : (i + 1) * dx, j * dy : (j + 1) * dy, c])
                 row = np.hstack(row)
-                proposal.append(row)        
+                proposal.append(row)
             proposal = np.vstack(proposal)
 
             # upsample instance to 8*wind_sz
             instance = misc.imresize(proposal, (sz * 8, sz * 8), interp='bilinear')
-            prediction[pos[0] * 8 : pos[2] * 8, pos[1] * 8 : pos[3] * 8] += instance 
+            prediction[pos[0] * 8 : pos[2] * 8, pos[1] * 8 : pos[3] * 8] += instance
             #instances.append(instance)
         return prediction #instances, 8 * picked_pos
 
 
     def non_max_suppression_fast(self, boxes, area=128*256, threshold=0.8):
-    
+
         """
         Modified non-maximum suppresion based on the implementation by Adrian Rosebrock
-        Source: http://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/ 
+        Source: http://www.pyimagesearch.com/2015/02/16/faster-non-maximum-suppression-python/
         """
 
 	# if there are no boxes, return an empty list
@@ -332,7 +333,7 @@ class InstanceSensitiveFCN8s:
 	if boxes.dtype.kind == "i":
 		boxes = boxes.astype("float")
 
-	# initialize the list of picked indexes	
+	# initialize the list of picked indexes
 	pick = []
 
 	# grab the coordinates of the bounding boxes and corresponding score
@@ -341,7 +342,7 @@ class InstanceSensitiveFCN8s:
 	x2 = boxes[:,2]
 	y2 = boxes[:,3]
         score = boxes[:,4]
-        
+
         # Sort with score, the higher the score, the more confident it is an instance bounding box
 	idxs = np.argsort(score)
 
@@ -374,4 +375,4 @@ class InstanceSensitiveFCN8s:
 
 	# return only the bounding boxes that were picked using the
 	# integer data type
-	return boxes[pick].astype("int") 
+	return boxes[pick].astype("int")
