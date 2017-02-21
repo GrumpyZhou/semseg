@@ -45,7 +45,7 @@ params = {'rate': 1e-5,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 1
+train_iter = 0
 val_step = 5000
 
 # Logging config
@@ -85,7 +85,7 @@ with tf.Session() as sess:
         train_feed_dict = {train_img: next_pair_image,
                            train_box: next_pair_box,
                            train_mask: next_pair_label}
-        sess.run(train_op, train_feed_dict)
+        #sess.run(train_op, train_feed_dict)
         print('loss %f'% sess.run(loss, train_feed_dict))
         # Save loss value
         """
