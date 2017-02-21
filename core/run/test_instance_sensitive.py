@@ -25,19 +25,20 @@ test_data_config = {'city_dir':"../data/CityDatabase",
                      'randomize': False,
                      'seed': None,
                      'dataset': 'train',
-                     'use_box': True,
+                     'use_box': False,
                      'use_car': True,
                      'use_person': False,
                      'pred_save_path': None,
                      'colored_save_path': None,
                      'labelIDs_save_path': None}
 
-weight_iter = 30000
+weight_iter = 50000
 params = {'rate': 1e-5,
           'trained_weight_path':'../data/val_weights/city_fcn8s_instance_sensitive_%d.npy'%weight_iter}
 
 test_dataset = dt.CityDataSet(test_data_config)
-iterations = 1
+iterations = 46
+imli = {17, 45}
 
 
 with tf.Session() as sess:
@@ -52,16 +53,23 @@ with tf.Session() as sess:
 
     print('Running the inference ...')
     for i in range(iterations):
-        next_pair = test_dataset.next_batch()
-        next_pair_image = next_pair[0]
-        print(next_pair_image.dtype)
-        inf_feed_dict = {image: next_pair_image}
+        if i in imli:
+            next_pair = test_dataset.next_batch()            
+            next_pair_image = next_pair[0]
+            print(next_pair_image.dtype)
+            inf_feed_dict = {image: next_pair_image}
 
-        score_map, feature_map = sess.run([obj_score, inst_score], feed_dict=inf_feed_dict)
-        np.save('./sens/feature_im%d_%d.npy'%(i, weight_iter), feature_map)
-        
-        # Get instances from densely assembling
-        prediction = inst_fcn.dense_assemble(score_map, feature_map)
-        scp.misc.imsave('./sens/pred_im%d_%d.png'%(i, weight_iter), prediction)
+            score_map, feature_map = sess.run([obj_score, inst_score], feed_dict=inf_feed_dict)
+            np.save('./sens/feature_im%d_%d.npy'%(i, weight_iter), feature_map)
+            np.save('./sens/score_im%d_%d.npy'%(i, weight_iter), score_map)
+            
+            
+            # Get instances from densely assembling
+            prediction = inst_fcn.dense_assemble(score_map, feature_map)
+            scp.misc.imsave('./sens/pred_im%d_%d.png'%(i, weight_iter), prediction)
+        else:
+            next_pair = test_dataset.next_batch()
+            continue
+
         
         

@@ -45,7 +45,7 @@ params = {'rate': 1e-5,
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 50000
+train_iter = 1
 val_step = 5000
 
 # Logging config
@@ -61,10 +61,10 @@ with tf.Session() as sess:
     # create model and train op
     [train_op, loss] = fcn.train(image=train_img, gt_mask=train_mask, gt_box=train_box, learning_rate=params['rate'], num_box=256, save_var=True)
     var_dict_to_train = fcn.var_dict
-    tf.scalar_summary('train_loss', loss)
+    #tf.scalar_summary('train_loss', loss)
 
-    merged_summary = tf.merge_all_summaries()
-    writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
+    #merged_summary = tf.merge_all_summaries()
+    #writer = tf.train.SummaryWriter(params['tsboard_save_path'], sess.graph)
 
     init = tf.initialize_all_variables()
     sess.run(init)
@@ -86,8 +86,9 @@ with tf.Session() as sess:
                            train_box: next_pair_box,
                            train_mask: next_pair_label}
         sess.run(train_op, train_feed_dict)
-        #print('loss %f'% sess.run(loss, train_feed_dict))
+        print('loss %f'% sess.run(loss, train_feed_dict))
         # Save loss value
+        """
         if i % 100 == 0:
              summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
              writer.add_summary(summary, i)
@@ -102,6 +103,8 @@ with tf.Session() as sess:
 	         fpath = npy_path+fname
                  np.save(fpath, train_weight_dict)
                  print("trained weights saved: ", fpath)
+        """
+                 
     print('Finished training')
 
 
