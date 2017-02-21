@@ -60,65 +60,16 @@ class InstanceSensitiveFCN8s:
         model['conv4_1'] = nn.conv_layer(model['pool3'], feed_dict, "conv4_1", var_dict=var_dict)
         model['conv4_2'] = nn.conv_layer(model['conv4_1'], feed_dict, "conv4_2", var_dict=var_dict)
         model['conv4_3'] = nn.conv_layer(model['conv4_2'], feed_dict, "conv4_3", var_dict=var_dict)
-        model['pool4'] = nn.max_pool_layer(model['conv4_3'], "pool4")
 
-
-        model['conv5_1'] = nn.conv_layer(model['pool4'], feed_dict, "conv5_1", var_dict=var_dict)
+        # Hole algorithm to keep output size
+        model['conv5_1'] = nn.atrous_conv_layer(model['conv4_3'], feed_dict, "atrous_conv5_1", 
+                                             rate=2, shape=[3, 3, 512, 512], var_dict=var_dict)
         model['conv5_2'] = nn.conv_layer(model['conv5_1'], feed_dict, "conv5_2", var_dict=var_dict)
         model['conv5_3'] = nn.conv_layer(model['conv5_2'], feed_dict, "conv5_3", var_dict=var_dict)
-        model['pool5'] = nn.max_pool_layer(model['conv5_3'], "pool5")
-
-        model['conv6_1'] = nn.conv_layer(model['pool5'], feed_dict, "conv6_1",
-                                         shape=[3, 3, 512, 512], dropout=is_train,
-                                         keep_prob=0.5, var_dict=var_dict)
-
-        model['conv6_2'] = nn.conv_layer(model['conv6_1'], feed_dict, "conv6_2",
-                                         shape=[3, 3, 512, 512], dropout=is_train,
-                                         keep_prob=0.5, var_dict=var_dict)
-
-        model['conv6_3'] = nn.conv_layer(model['conv6_2'], feed_dict, "conv6_3",
-                                         shape=[3, 3, 512, 4096], dropout=is_train,
-                                         keep_prob=0.5, var_dict=var_dict)
-
-        model['conv7'] = nn.conv_layer(model['conv6_3'], feed_dict, "conv7",
-                                       shape=[1, 1, 4096, 4096], dropout=is_train,
-                                       keep_prob=0.5, var_dict=var_dict)
-
-        # Skip feature fusion
-        model['score_fr'] = nn.conv_layer(model['conv7'], feed_dict, "score_fr_inst",
-                                          shape=[1, 1, 4096, 512], relu=False,
-                                          dropout=False, var_dict=var_dict)
-
-        # Upsample: score_fr*2
-        upscore_fr_2s = nn.upscore_layer(model['score_fr'], feed_dict, "upscore_fr_2s_inst",
-                                       tf.shape(model['pool4']), num_class=512,
-                                       ksize=4, stride=2, var_dict=var_dict)
-        # Fuse upscore_fr_2s + score_pool4
-        in_features = model['pool4'].get_shape()[3].value
-        score_pool4 = nn.conv_layer(model['pool4'], feed_dict, "score_pool4_inst",
-                                    shape=[1, 1, in_features, 512],
-                                    relu=False, dropout=False, var_dict=var_dict)
-
-        fuse_pool4 = tf.add(upscore_fr_2s, score_pool4)
-
-
-        # Upsample fuse_pool4*2
-        upscore_pool4_2s = nn.upscore_layer(fuse_pool4, feed_dict, "upscore_pool4_2s_inst",
-                                            tf.shape(model['pool3']), num_class=512,
-                                            ksize=4, stride=2, var_dict=var_dict)
-
-        # Fuse upscore_pool4_2s + score_pool3
-        in_features = model['pool3'].get_shape()[3].value
-        score_pool3 = nn.conv_layer(model['pool3'], feed_dict, "score_pool3_inst",
-                                    shape=[1, 1, in_features, 512],
-                                    relu=False, dropout=False, var_dict=var_dict)
-
-        model['score_out'] = tf.add(upscore_pool4_2s, score_pool3)
-
-
+        
         # Instance assembling score
-        model['inst_conv1'] = nn.conv_layer(model['score_out'], feed_dict, "inst_conv1",
-                                            shape=[1, 1, 512, 512],relu=False,
+        model['inst_conv1'] = nn.conv_layer(model['conv5_3'], feed_dict, "inst_conv1",
+                                            shape=[1, 1, 512, 512],relu=True,
                                             dropout=False, var_dict=var_dict)
 
         model['inst_score'] = nn.conv_layer(model['inst_conv1'], feed_dict, "inst_conv2",
@@ -126,26 +77,17 @@ class InstanceSensitiveFCN8s:
                                             dropout=False, var_dict=var_dict)
 
         # Objectness score
-        model['obj_conv1'] = nn.conv_layer(model['score_out'], feed_dict, "obj_conv1",
-                                            shape=[3, 3, 512, 512],relu=False,
+        model['obj_conv1'] = nn.conv_layer(model['conv5_3'], feed_dict, "obj_conv1",
+                                            shape=[3, 3, 512, 512],relu=True,
                                             dropout=False, var_dict=var_dict)
 
         model['obj_score'] = nn.conv_layer(model['obj_conv1'], feed_dict, "obj_conv2",
                                             shape=[1, 1, 512, 1],relu=False,
                                             dropout=False, var_dict=var_dict)
 
-        """
-        # Upsample to original size *8 # Or we have to do it by class
-        model['upmask'] = nn.upscore_layer(score_out, feed_dict,
-                                  "upmask", tf.shape(image), self.num_pred_class * max_instance,
-                                  ksize=16, stride=8, var_dict=var_dict)
-        """
-
-
         print('Instance-sensitive-fcn8s model is builded successfully!')
         print('Model: %s' % str(model.keys()))
         return model
-
 
     def train(self, image, gt_mask, gt_box, learning_rate=1e-6, num_box = 256, save_var=True):
         '''
@@ -160,7 +102,7 @@ class InstanceSensitiveFCN8s:
         inst_score = model['inst_score']
         obj_score = model['obj_score']
         loss = 0
-
+        
         for k in range(num_box):
             # box location and size
             x = gt_box[k][0][0]
@@ -194,21 +136,24 @@ class InstanceSensitiveFCN8s:
 
             # Calculate instance loss (only for positive samples) and objectness loss
             inst_loss = tf.cond(cond, lambda: self.get_inst_loss(inst_score, instance_gt_score, weight, x_s, y_s, w_s, h_s), lambda: tf.constant(0, tf.float32))
-            obj_loss = self.get_obj_loss(obj_score, instance_gt_score, weight, x_s, y_s, w_s, h_s)
+            obj_loss = tf.cond(cond, lambda: self.get_obj_loss(obj_score, 1, x_s, y_s, w_s, h_s), lambda: self.get_obj_loss(obj_score, 0, x_s, y_s, w_s, h_s))
             loss += obj_loss + inst_loss
 
         train_step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
         return train_step, loss
+        
+    def get_obj_loss(self, obj_score, obj_gt, x, y, w, h):
 
-    def get_obj_loss(self, obj_score, obj_gt, weight, x, y, w, h):
-        # Generate corresponding objectness score
-        objectness = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
+        # Take out four center pixels
+        xc = x + tf.cast(tf.floor(w / 2), tf.int32)
+        yc = y + tf.cast(tf.floor(h / 2), tf.int32)
+        object_score = tf.slice(obj_score, [0, xc, yc, 0], [1, 2, 2, 1])
 
-        # Upsample instance proposal to original size *8
-        objectness = tf.image.resize_bilinear(objectness, [w*8, h*8])
+        # Generate gt for four center pixels
+        object_score_gt = tf.constant(obj_gt, dtype=tf.float32, shape=[1, 2, 2, 1])
 
         # Logistic regression to calculate loss weighted cross-entropy)
-        loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(logits=objectness, targets=obj_gt, pos_weight=weight))
+        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=object_score, targets=object_score_gt))
         return loss
 
     def get_inst_loss(self, inst_score, inst_gt, weight, x, y, w, h):
