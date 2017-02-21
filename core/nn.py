@@ -39,6 +39,24 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
 
     return conv_out
 
+def atrous_conv_layer(x, feed_dict, name, rate=2, shape=None, relu=True, var_dict=None):
+
+    with tf.variable_scope(name) as scope:
+        print('Layer name: %s' % name)  
+        kernel = get_conv_kernel(feed_dict, name, shape)
+        bias = get_bias(feed_dict, name, shape)
+ 
+        conv = tf.nn.atrous_conv2d(x, kernel, rate=rate, padding='SAME')
+        conv_out = tf.nn.bias_add(conv, bias) 
+            
+        if relu:
+            conv_out =  tf.nn.relu(conv_out)
+
+    if var_dict is not None:
+        var_dict[name] = (kernel, bias)
+
+    return conv_out
+
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
 def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, reuse_scope=False, var_dict=None):
     strides = [1, stride, stride, 1]
