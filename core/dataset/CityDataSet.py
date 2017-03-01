@@ -154,7 +154,7 @@ class CityDataSet():
         - subtract mean
         - transpose to channel x height x width order
         """
-        print('Loading img:%s'%fname)
+        #print('Loading img:%s'%fname)
         try:
             img = Image.open(fname)
         except IOError as e:
@@ -173,7 +173,7 @@ class CityDataSet():
 
         If use boxes, we should load both gt mask and gt box
         """
-        print('Loading lbl:%s'%fname)
+        #print('Loading lbl:%s'%fname)
         try:
             img = Image.open(fname)
         except IOError as e:
@@ -194,7 +194,7 @@ class CityDataSet():
         """
         Load gt box
         """
-        print('Loading box:%s'%fname)
+        #print('Loading box:%s'%fname)
         if self.use_box:
             box = np.load(fname)
 
