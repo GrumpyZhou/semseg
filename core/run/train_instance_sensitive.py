@@ -37,18 +37,17 @@ train_data_config = {'city_dir':"../data/CityDatabase",
 
 # TODO: adjust params according to instance-sensitive network
 params = {'rate': 1e-6,
-          #'tsboard_save_path': '../data/tsboard_result/inst_sens',
-  'tsboard_save_path': '../data/tsboard_result/inst_sens_vgg',
+          'tsboard_save_path': '../data/tsboard_result/inst_sens',
 	  'trained_weight_path':'../data/vgg16_new.npy',
-          #'trained_weight_path':'../data/val_weights/instance_sens_reimpl/city_fcn8s_instance_sensitive_50000.npy',
+          #'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
 
 # Change to Cityscape databse
 train_dataset = dt.CityDataSet(train_data_config)
 
 # Hyper-parameters
-train_iter = 10
-val_step = 10
+train_iter = 50000
+val_step = 10000
 
 # Logging config
 with tf.Session() as sess:
@@ -87,11 +86,10 @@ with tf.Session() as sess:
         train_feed_dict = {train_img: next_pair_image,
                            train_box: next_pair_box,
                            train_mask: next_pair_label}
-        train_op_, loss_value = sess.run([train_op, loss], train_feed_dict)
-	print('loss %f'%loss_value)
+        sess.run(train_op, train_feed_dict)
         #print('loss %f'% sess.run(loss, train_feed_dict))
         # Save loss value
-        '''
+       
         if i % 100 == 0:
              summary, loss_value = sess.run([merged_summary, loss], train_feed_dict)
              writer.add_summary(summary, i)
@@ -106,7 +104,7 @@ with tf.Session() as sess:
 	         fpath = npy_path+fname
                  np.save(fpath, train_weight_dict)
                  print("trained weights saved: ", fpath)
-        '''
+    
                  
     print('Finished training')
 

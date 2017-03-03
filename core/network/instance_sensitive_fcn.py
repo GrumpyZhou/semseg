@@ -144,14 +144,21 @@ class InstanceSensitiveFCN8s:
         
     def get_obj_loss(self, obj_score, obj_gt, x, y, w, h):
 
-        # Take out four center pixels
+        """# Take out four center pixels
         xc = x + tf.cast(tf.floor(w / 2), tf.int32)
         yc = y + tf.cast(tf.floor(h / 2), tf.int32)
         object_score = tf.slice(obj_score, [0, xc, yc, 0], [1, 2, 2, 1])
-
+        
         # Generate gt for four center pixels
         object_score_gt = tf.constant(obj_gt, dtype=tf.float32, shape=[1, 2, 2, 1])
+        """
 
+        # Take out the corresponding object score
+        objectness = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
+
+        # Generate gt according to positiveness flag
+        object_score_gt = tf.constant(obj_gt, dtype=tf.float32, shape=[1, w, h, 1])
+        
         # Logistic regression to calculate loss weighted cross-entropy)
         loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=object_score, targets=object_score_gt))
         return loss
