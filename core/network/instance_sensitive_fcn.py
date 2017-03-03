@@ -154,13 +154,13 @@ class InstanceSensitiveFCN8s:
         """
 
         # Take out the corresponding object score
-        objectness = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
+        object_score = tf.slice(obj_score, [0, x, y, 0], [1, w, h, 1])
 
         # Generate gt according to positiveness flag
         if obj_gt == 1:
-            object_score_gt = tf.ones_like(objectness)
+            object_score_gt = tf.ones_like(object_score)
         else:
-            object_score_gt = tf.ones_like(objectness)
+            object_score_gt = tf.ones_like(object_score)
         object_score_gt = tf.cast(object_score_gt, tf.float32)
         
         # Logistic regression to calculate loss weighted cross-entropy)
