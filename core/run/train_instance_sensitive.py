@@ -36,7 +36,7 @@ train_data_config = {'city_dir':"../data/CityDatabase",
 
 
 # TODO: adjust params according to instance-sensitive network
-params = {'rate': 1e-4,
+params = {'rate': 1e-6,
           'tsboard_save_path': '../data/tsboard_result/inst_sens',
           'trained_weight_path':'../data/val_weights/fcn8s/city_fcn8s_skip_100000.npy',
           'save_trained_weight_path':'../data/val_weights/'}
