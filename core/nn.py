@@ -39,6 +39,41 @@ def conv_layer(x, feed_dict, name, stride=1, shape=None, relu=True, dropout=Fals
 
     return conv_out
 
+def mask_layer(x, feed_dict, name, shape, stride=1, relu=False, dropout=False, keep_prob=0.5, var_dict=None):
+    '''
+    Input
+    x: a stack of semantic mask with shape [batch, height, width, num_classes]
+    shape: the shape of the conv kernel which should be [filter_height, filter_width, in_channels, max_instance]
+
+    Using depthwise convolution to transform every semantic mask into a stack of instance masks
+    
+    Return: 
+    convolved input with shape [batch, height, width, num_classes * max_instance]
+    '''
+
+    with tf.variable_scope(name) as scope:
+        print('Layer name: %s' % name)  
+     
+        kernel = get_mask_conv_kernel(feed_dict, name, shape)
+        bias = get_bias(feed_dict, name, [1, 1, 1, shape[2]*shape[3]])
+
+        conv = tf.nn.depthwise_conv2d(x, kernel,
+                                      strides=[1, stride, stride, 1],
+                                      padding='SAME')
+        conv_out = tf.nn.bias_add(conv, bias) 
+            
+        if relu:
+            conv_out =  tf.nn.relu(conv_out)
+        if dropout:
+            conv_out = tf.nn.dropout(conv_out, keep_prob)
+
+    if var_dict is not None:
+        var_dict[name] = (kernel, bias)
+
+    return conv_out
+
+
+
 # Use existing code, still don't understand. Prefer to use upscore_layer() first.
 def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_dict=None):
     strides = [1, stride, stride, 1]
@@ -68,6 +103,19 @@ def upscore_layer(x, feed_dict, name, shape, num_class, ksize=4, stride=2, var_d
         var_dict[name] = (kernel)
 
     return deconv
+
+def get_mask_conv_kernel(feed_dict, feed_name, shape):
+    if not feed_dict.has_key(feed_name):
+        print("No matched kernel %s, randomly initialize the kernel with shape: %s " % (feed_name, str(shape)))
+        init = tf.constant_initializer(value=0, dtype=tf.float32)
+    else:
+        kernel = feed_dict[feed_name][0]
+        shape = kernel.shape
+        print('Load kernel with shape: %s' % str(shape))
+        init = tf.constant_initializer(value=kernel,dtype=tf.float32)
+    var = tf.get_variable(name="kernel", initializer=init, shape=shape)
+    return var
+
 
 def get_conv_kernel(feed_dict, feed_name, shape):
     if not feed_dict.has_key(feed_name):

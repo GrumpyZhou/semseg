@@ -21,6 +21,7 @@ class CityDataSet():
     def __init__(self, params):
         ''' type: 'train', 'val', 'test' '''
         self.dataset_type = params.get('dataset','train')
+        self.use_gt_mask = params.get('use_gt_mask', False)
         self.city_dir = params.get('city_dir','../data/CityDatabase')
         self.pred_save_path = params.get('pred_save_path','../data/test_city')
         self.colored_save_path = params.get('colored_save_path', '../data/test_city_colored')
@@ -77,14 +78,23 @@ class CityDataSet():
         files_img.sort()
 
         if self.dataset_type != 'test':
-            # Load groudtruth images
-            search_lbl = os.path.join(self.city_dir,
-                                      'gtFine',
-                                      self.dataset_type,
-                                      '*','*_gtFine_labelTrainIds.png')
-            files_lbl = glob.glob(search_lbl)
-            files_lbl.sort()
-
+            if self.use_gt_mask:
+                print('Loading masks')
+                # Load gt_masks
+                search_lbl = os.path.join(self.city_dir,
+                                          'gtFine',
+                                          self.dataset_type,
+                                          '*','*_gtFine_mask.png')
+                files_lbl = glob.glob(search_lbl)
+                files_lbl.sort()
+            else:
+                # Load groudtruth images
+                search_lbl = os.path.join(self.city_dir,
+                                          'gtFine',
+                                          self.dataset_type,
+                                          '*','*_gtFine_labelTrainIds.png')
+                files_lbl = glob.glob(search_lbl)
+                files_lbl.sort()
         print('Training images:%d Ground Truth images:%d'%(len(files_img), len(files_lbl)))
         return (files_img, files_lbl)
 
@@ -113,10 +123,17 @@ class CityDataSet():
         else:
             lbl_fname = self.lbl_indices[self.idx]
             label = self.load_label(lbl_fname)
-            label = label.reshape(1, *label.shape)
             self.idx += 1
+        
+        if self.use_gt_mask:
+            # mask should be the first two channels of label as numpy array
+            mask = label[:,:,:,range(2)]
+            #print('label shape %s,mask shape %s '%(label.shape, mask.shape))
+            return (image,mask)
+        else:
+            label = label.reshape(1, *label.shape)
+            return (image,label)
 
-        return (image,label)
 
     def load_image(self, fname):
         """
@@ -150,10 +167,8 @@ class CityDataSet():
             print('Warning: no image with name %s!!'%fname)
             label = None
             return label
-
         label = np.array(img, dtype=np.uint8)
         label = label[np.newaxis, ...]
-
         return label
 
     def pred_to_color(self):
