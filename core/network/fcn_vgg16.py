@@ -167,13 +167,4 @@ class FCN16VGG:
 
         return train_step, loss
 
-    def validate(self, image, truth, num_classes, scale_min='fcn16s'):
-        # Build validation model
-        model = self._build_model(image, num_classes, is_train=False, scale_min=scale_min, val_dict = self.var_dict)
-        upscored = model[scale_min]
-        old_shape = tf.shape(upscored)
-        new_shape = [old_shape[0]*old_shape[1]*old_shape[2], params['num_classes']]
-        prediction = tf.reshape(upscored, new_shape)
-        loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(prediction, truth))
-        
-        return loss
+   
